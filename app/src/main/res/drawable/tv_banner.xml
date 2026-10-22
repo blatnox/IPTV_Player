@@ -1,0 +1,26 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <!-- Background Gradient -->
+    <path
+        android:fillColor="#0B132B"
+        android:pathData="M0,0h320v180h-320z" />
+    <path
+        android:fillColor="#1C2541"
+        android:pathData="M20,20h280a12,12 0 0,1 12,12v116a12,12 0 0,1 -12,12h-280a12,12 0 0,1 -12,-12v-116a12,12 0 0,1 12,-12z" />
+    <!-- TV Screen Frame Accent -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="3"
+        android:pathData="M30,30h260v100h-260z" />
+    <!-- Play Triangle -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M145,60l42,25l-42,25z" />
+    <!-- Stand -->
+    <path
+        android:fillColor="#48CAE4"
+        android:pathData="M130,140h60v6h-60z" />
+</vector>
