@@ -1,0 +1,29 @@
+package com.antigravity.tvplayer.data.local
+
+import androidx.room.Database
+import androidx.room.RoomDatabase
+import com.antigravity.tvplayer.data.local.dao.AccountDao
+import com.antigravity.tvplayer.data.local.dao.CategoryDao
+import com.antigravity.tvplayer.data.local.dao.ChannelDao
+import com.antigravity.tvplayer.data.local.dao.FavoriteDao
+import com.antigravity.tvplayer.data.local.entity.AccountEntity
+import com.antigravity.tvplayer.data.local.entity.CategoryEntity
+import com.antigravity.tvplayer.data.local.entity.ChannelEntity
+import com.antigravity.tvplayer.data.local.entity.FavoriteEntity
+
+@Database(
+    entities = [
+        AccountEntity::class,
+        CategoryEntity::class,
+        ChannelEntity::class,
+        FavoriteEntity::class
+    ],
+    version = 1,
+    exportSchema = false
+)
+abstract class TvDatabase : RoomDatabase() {
+    abstract fun accountDao(): AccountDao
+    abstract fun categoryDao(): CategoryDao
+    abstract fun channelDao(): ChannelDao
+    abstract fun favoriteDao(): FavoriteDao
+}
