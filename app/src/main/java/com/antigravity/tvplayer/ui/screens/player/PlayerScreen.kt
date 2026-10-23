@@ -135,6 +135,9 @@ fun PlayerScreen(
                     useController = false
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                     player = viewModel.playerManager.initializePlayer()
+                    setOnClickListener {
+                        viewModel.toggleOverlay()
+                    }
                 }
             },
             update = { playerView ->

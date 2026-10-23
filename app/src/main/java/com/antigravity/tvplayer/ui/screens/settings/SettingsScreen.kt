@@ -3,6 +3,10 @@ package com.antigravity.tvplayer.ui.screens.settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,24 +93,34 @@ fun SettingsScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(bottom = 20.dp)
             ) {
-                Surface(
-                    onClick = onBack,
-                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-                    colors = ClickableSurfaceDefaults.colors(
-                        containerColor = SurfaceDark,
-                        focusedContainerColor = FocusCyan,
-                        focusedContentColor = Color.Black
-                    ),
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = TextPrimary,
-                            modifier = Modifier.size(22.dp)
+                val backInteraction = remember { MutableInteractionSource() }
+                val isBackFocused by backInteraction.collectIsFocusedAsState()
+                val isBackHovered by backInteraction.collectIsHoveredAsState()
+
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            when {
+                                isBackFocused -> FocusCyan
+                                isBackHovered -> SurfaceVariantDark
+                                else -> SurfaceDark
+                            }
                         )
-                    }
+                        .clickable(
+                            interactionSource = backInteraction,
+                            indication = null,
+                            onClick = onBack
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = if (isBackFocused) Color.Black else TextPrimary,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -197,7 +211,8 @@ fun SettingsScreen(
                                     colors = ButtonDefaults.colors(
                                         containerColor = if (resumeLastChannel) FocusCyan else SurfaceVariantDark,
                                         focusedContainerColor = Color.White
-                                    )
+                                    ),
+                                    modifier = Modifier.clickable { viewModel.setResumeLastChannel(!resumeLastChannel) }
                                 ) {
                                     Text(
                                         text = if (resumeLastChannel) "Enabled" else "Disabled",
@@ -236,7 +251,8 @@ fun SettingsScreen(
                                     colors = ButtonDefaults.colors(
                                         containerColor = FocusCyan,
                                         focusedContainerColor = Color.White
-                                    )
+                                    ),
+                                    modifier = Modifier.clickable { if (!isRefreshing) viewModel.refreshPlaylist() }
                                 ) {
                                     if (isRefreshing) {
                                         CircularProgressIndicator(
@@ -398,7 +414,7 @@ fun StreamFormatButton(
             focusedContainerColor = Color.White
         ),
         shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
-        modifier = modifier
+        modifier = modifier.clickable { onClick() }
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

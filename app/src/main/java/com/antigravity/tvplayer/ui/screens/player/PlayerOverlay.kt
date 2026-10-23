@@ -4,6 +4,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -95,24 +99,34 @@ fun PlayerOverlay(
                 .align(Alignment.TopStart)
                 .padding(32.dp)
         ) {
-            Surface(
-                onClick = onBack,
-                shape = ClickableSurfaceDefaults.shape(CircleShape),
-                colors = ClickableSurfaceDefaults.colors(
-                    containerColor = Color.Black.copy(alpha = 0.65f),
-                    focusedContainerColor = FocusCyan,
-                    focusedContentColor = Color.Black
-                ),
-                modifier = Modifier.size(46.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back to Channel List",
-                        tint = TextPrimary,
-                        modifier = Modifier.size(22.dp)
+            val backInteraction = remember { MutableInteractionSource() }
+            val isBackFocused by backInteraction.collectIsFocusedAsState()
+            val isBackHovered by backInteraction.collectIsHoveredAsState()
+
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(
+                        when {
+                            isBackFocused -> FocusCyan
+                            isBackHovered -> Color.White.copy(alpha = 0.35f)
+                            else -> Color.Black.copy(alpha = 0.65f)
+                        }
                     )
-                }
+                    .clickable(
+                        interactionSource = backInteraction,
+                        indication = null,
+                        onClick = onBack
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back to Channel List",
+                    tint = if (isBackFocused) Color.Black else TextPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
         // Center Buffering Indicator
@@ -319,24 +333,34 @@ fun PlayerOverlay(
                         )
 
                         // Favorite Toggle Button
-                        Surface(
-                            onClick = onToggleFavorite,
-                            colors = ClickableSurfaceDefaults.colors(
-                                containerColor = Color.White.copy(alpha = 0.15f),
-                                focusedContainerColor = FocusCyan,
-                                focusedContentColor = Color.Black
-                            ),
-                            shape = ClickableSurfaceDefaults.shape(CircleShape),
-                            modifier = Modifier.size(44.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = if (channel?.isFavorite == true) Icons.Default.Star else Icons.Outlined.StarBorder,
-                                    contentDescription = "Toggle Favorite",
-                                    tint = if (channel?.isFavorite == true) FavoriteGold else TextPrimary,
-                                    modifier = Modifier.size(24.dp)
+                        val favInteraction = remember { MutableInteractionSource() }
+                        val isFavFocused by favInteraction.collectIsFocusedAsState()
+                        val isFavHovered by favInteraction.collectIsHoveredAsState()
+
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    when {
+                                        isFavFocused -> FocusCyan
+                                        isFavHovered -> Color.White.copy(alpha = 0.35f)
+                                        else -> Color.White.copy(alpha = 0.15f)
+                                    }
                                 )
-                            }
+                                .clickable(
+                                    interactionSource = favInteraction,
+                                    indication = null,
+                                    onClick = onToggleFavorite
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (channel?.isFavorite == true) Icons.Default.Star else Icons.Outlined.StarBorder,
+                                contentDescription = "Toggle Favorite",
+                                tint = if (isFavFocused) Color.Black else if (channel?.isFavorite == true) FavoriteGold else TextPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
 
                         Spacer(modifier = Modifier.width(6.dp))
@@ -361,24 +385,34 @@ fun PlayerControlButton(
     contentDescription: String,
     onClick: () -> Unit
 ) {
-    Surface(
-        onClick = onClick,
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.White.copy(alpha = 0.15f),
-            focusedContainerColor = FocusCyan,
-            focusedContentColor = Color.Black
-        ),
-        shape = ClickableSurfaceDefaults.shape(CircleShape),
-        modifier = Modifier.size(44.dp)
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                tint = TextPrimary,
-                modifier = Modifier.size(22.dp)
+    val interaction = remember { MutableInteractionSource() }
+    val isFocused by interaction.collectIsFocusedAsState()
+    val isHovered by interaction.collectIsHoveredAsState()
+
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(
+                when {
+                    isFocused -> FocusCyan
+                    isHovered -> Color.White.copy(alpha = 0.35f)
+                    else -> Color.White.copy(alpha = 0.15f)
+                }
             )
-        }
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (isFocused) Color.Black else TextPrimary,
+            modifier = Modifier.size(22.dp)
+        )
     }
 }
 
