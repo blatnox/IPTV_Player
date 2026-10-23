@@ -62,7 +62,11 @@ fun TvNavHost(
             PlayerScreen(
                 viewModel = viewModel,
                 onBackToLiveTv = {
-                    navController.popBackStack()
+                    if (!navController.popBackStack()) {
+                        navController.navigate(NavRoute.LiveTv.route) {
+                            popUpTo(NavRoute.Player.route) { inclusive = true }
+                        }
+                    }
                 }
             )
         }

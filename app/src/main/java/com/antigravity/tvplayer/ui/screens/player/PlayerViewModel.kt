@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.antigravity.tvplayer.data.api.XtreamUrlBuilder
 import com.antigravity.tvplayer.data.settings.SettingsDataStore
 import com.antigravity.tvplayer.domain.model.Account
+import com.antigravity.tvplayer.domain.model.Category
 import com.antigravity.tvplayer.domain.model.Channel
 import com.antigravity.tvplayer.domain.model.StreamFormat
 import com.antigravity.tvplayer.domain.repository.AccountRepository
@@ -65,12 +66,24 @@ class PlayerViewModel @Inject constructor(
             activeAccount = account
 
             if (account != null) {
-                // Fetch channels to allow zapping
-                channelRepository.getChannels(account.id, "").collect { list ->
-                    channelList = list
-                    if (_uiState.value.currentChannel == null && list.isNotEmpty()) {
-                        val target = list.find { it.streamId == initialStreamId } ?: list.first()
-                        playChannel(target)
+                val targetChannel = if (initialStreamId > 0) {
+                    channelRepository.getChannelByStreamIdSync(account.id, initialStreamId)
+                } else null
+
+                if (targetChannel != null) {
+                    playChannel(targetChannel)
+                    channelRepository.getChannels(account.id, targetChannel.categoryId).collect { list ->
+                        channelList = list
+                    }
+                } else {
+                    val firstCat = channelRepository.getCategories(account.id).first()
+                        .firstOrNull { it.id != Category.FAVORITES_ID }
+                    val catId = firstCat?.id ?: ""
+                    channelRepository.getChannels(account.id, catId).collect { list ->
+                        channelList = list
+                        if (_uiState.value.currentChannel == null && list.isNotEmpty()) {
+                            playChannel(list.first())
+                        }
                     }
                 }
             }

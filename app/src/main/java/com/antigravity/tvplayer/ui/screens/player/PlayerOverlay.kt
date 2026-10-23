@@ -15,9 +15,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.LiveTv
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.CircularProgressIndicator
@@ -63,6 +69,10 @@ fun PlayerOverlay(
     playerState: PlayerUiState,
     isVisible: Boolean,
     numberBuffer: String,
+    onBack: () -> Unit,
+    onZapPrevious: () -> Unit,
+    onZapNext: () -> Unit,
+    onTogglePlayPause: () -> Unit,
     onToggleFavorite: () -> Unit
 ) {
     var currentTime by remember { mutableStateOf("") }
@@ -76,6 +86,35 @@ fun PlayerOverlay(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Top-Left Back Button for Mouse & Remote
+        AnimatedVisibility(
+            visible = isVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(32.dp)
+        ) {
+            Surface(
+                onClick = onBack,
+                shape = ClickableSurfaceDefaults.shape(CircleShape),
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = Color.Black.copy(alpha = 0.65f),
+                    focusedContainerColor = FocusCyan,
+                    focusedContentColor = Color.Black
+                ),
+                modifier = Modifier.size(46.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back to Channel List",
+                        tint = TextPrimary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+        }
         // Center Buffering Indicator
         if (playerState.isBuffering) {
             Box(
@@ -253,11 +292,33 @@ fun PlayerOverlay(
                         }
                     }
 
-                    // Right: Favorite toggle + Clock
+                    // Right: Playback Controls + Favorite + Clock
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(20.dp)
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
+                        // Channel Zap Previous Button
+                        PlayerControlButton(
+                            icon = Icons.Default.SkipPrevious,
+                            contentDescription = "Previous Channel",
+                            onClick = onZapPrevious
+                        )
+
+                        // Play / Pause Toggle Button
+                        PlayerControlButton(
+                            icon = if (playerState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (playerState.isPlaying) "Pause" else "Play",
+                            onClick = onTogglePlayPause
+                        )
+
+                        // Channel Zap Next Button
+                        PlayerControlButton(
+                            icon = Icons.Default.SkipNext,
+                            contentDescription = "Next Channel",
+                            onClick = onZapNext
+                        )
+
+                        // Favorite Toggle Button
                         Surface(
                             onClick = onToggleFavorite,
                             colors = ClickableSurfaceDefaults.colors(
@@ -265,7 +326,7 @@ fun PlayerOverlay(
                                 focusedContainerColor = FocusCyan,
                                 focusedContentColor = Color.Black
                             ),
-                            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+                            shape = ClickableSurfaceDefaults.shape(CircleShape),
                             modifier = Modifier.size(44.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -273,10 +334,12 @@ fun PlayerOverlay(
                                     imageVector = if (channel?.isFavorite == true) Icons.Default.Star else Icons.Outlined.StarBorder,
                                     contentDescription = "Toggle Favorite",
                                     tint = if (channel?.isFavorite == true) FavoriteGold else TextPrimary,
-                                    modifier = Modifier.size(26.dp)
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
                         }
+
+                        Spacer(modifier = Modifier.width(6.dp))
 
                         Text(
                             text = currentTime,
@@ -288,6 +351,33 @@ fun PlayerOverlay(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun PlayerControlButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.White.copy(alpha = 0.15f),
+            focusedContainerColor = FocusCyan,
+            focusedContentColor = Color.Black
+        ),
+        shape = ClickableSurfaceDefaults.shape(CircleShape),
+        modifier = Modifier.size(44.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = TextPrimary,
+                modifier = Modifier.size(22.dp)
+            )
         }
     }
 }

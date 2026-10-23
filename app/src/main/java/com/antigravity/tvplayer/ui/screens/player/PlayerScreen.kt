@@ -6,7 +6,9 @@ import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -57,6 +59,12 @@ fun PlayerScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                viewModel.toggleOverlay()
+            }
             .focusRequester(focusRequester)
             .focusable()
             .onKeyEvent { keyEvent ->
@@ -135,12 +143,34 @@ fun PlayerScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // TV Overlay
+        // Click interceptor for Mouse and Touch on video area
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    viewModel.toggleOverlay()
+                }
+        )
+
+        // TV & Mouse Overlay
         PlayerOverlay(
             channel = uiState.currentChannel,
             playerState = playerState,
             isVisible = uiState.isOverlayVisible,
             numberBuffer = uiState.numberBuffer,
+            onBack = {
+                viewModel.playerManager.stop()
+                onBackToLiveTv()
+            },
+            onZapPrevious = viewModel::zapPrevious,
+            onZapNext = viewModel::zapNext,
+            onTogglePlayPause = {
+                if (playerState.isPlaying) viewModel.playerManager.pause()
+                else viewModel.playerManager.resume()
+            },
             onToggleFavorite = viewModel::toggleCurrentFavorite
         )
     }

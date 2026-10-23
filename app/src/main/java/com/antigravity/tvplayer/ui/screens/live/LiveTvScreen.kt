@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -265,6 +266,9 @@ fun LiveTvScreen(
                                 },
                                 onLongClick = {
                                     viewModel.toggleFavorite(channel)
+                                },
+                                onToggleFavorite = {
+                                    viewModel.toggleFavorite(channel)
                                 }
                             )
                         }
@@ -338,7 +342,8 @@ fun CategoryListItem(
 fun ChannelListItem(
     channel: Channel,
     onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onLongClick: () -> Unit,
+    onToggleFavorite: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -372,7 +377,7 @@ fun ChannelListItem(
                     fontWeight = FontWeight.Bold,
                     color = if (isFocused) Color.Black else TextMuted
                 ),
-                modifier = Modifier.width(42.dp)
+                modifier = Modifier.width(44.dp)
             )
 
             // Channel Logo
@@ -413,21 +418,33 @@ fun ChannelListItem(
                 modifier = Modifier.weight(1f)
             )
 
-            // Favorite Indicator Icon
-            if (channel.isFavorite) {
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = "Favorite",
-                    tint = if (isFocused) Color.Black else FavoriteGold,
-                    modifier = Modifier.size(24.dp)
-                )
-            } else if (isFocused) {
-                Icon(
-                    imageVector = Icons.Outlined.StarBorder,
-                    contentDescription = "Add favorite",
-                    tint = Color.Black.copy(alpha = 0.6f),
-                    modifier = Modifier.size(22.dp)
-                )
+            // Favorite Button (Clickable for mouse & touch, visible on focus)
+            Surface(
+                onClick = onToggleFavorite,
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = Color.Transparent,
+                    focusedContainerColor = Color.Black.copy(alpha = 0.2f)
+                ),
+                shape = ClickableSurfaceDefaults.shape(CircleShape),
+                modifier = Modifier.size(36.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    if (channel.isFavorite) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "Favorite",
+                            tint = if (isFocused) Color.Black else FavoriteGold,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Outlined.StarBorder,
+                            contentDescription = "Add favorite",
+                            tint = if (isFocused) Color.Black.copy(alpha = 0.6f) else TextMuted,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
             }
         }
     }
@@ -441,6 +458,7 @@ fun ChannelSearchBar(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
+    val focusRequester = remember { FocusRequester() }
 
     Box(
         modifier = modifier
@@ -452,8 +470,8 @@ fun ChannelSearchBar(
                 color = if (isFocused) FocusCyan else Color(0xFF232D3F),
                 shape = RoundedCornerShape(10.dp)
             )
-            .padding(horizontal = 14.dp, vertical = 10.dp)
-            .focusable(interactionSource = interactionSource),
+            .clickable { focusRequester.requestFocus() }
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         contentAlignment = Alignment.CenterStart
     ) {
         Row(
@@ -478,13 +496,16 @@ fun ChannelSearchBar(
                     value = query,
                     onValueChange = onQueryChange,
                     singleLine = true,
+                    interactionSource = interactionSource,
                     textStyle = TextStyle(
                         color = TextPrimary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium
                     ),
                     cursorBrush = SolidColor(FocusCyan),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
                 )
             }
             if (query.isNotEmpty()) {
