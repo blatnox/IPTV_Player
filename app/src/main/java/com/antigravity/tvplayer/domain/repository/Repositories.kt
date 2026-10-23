@@ -6,6 +6,9 @@ import kotlinx.coroutines.flow.Flow
 
 interface ChannelRepository {
     fun getCategories(accountId: Long): Flow<List<Category>>
+    fun getAllCategories(accountId: Long): Flow<List<Category>>
+    suspend fun setCategoryHidden(accountId: Long, categoryId: String, isHidden: Boolean)
+    suspend fun setAllCategoriesHidden(accountId: Long, isHidden: Boolean)
     fun getChannels(accountId: Long, categoryId: String): Flow<List<Channel>>
     fun searchChannels(accountId: Long, query: String): Flow<List<Channel>>
     fun getChannelByStreamId(accountId: Long, streamId: Int): Flow<Channel?>

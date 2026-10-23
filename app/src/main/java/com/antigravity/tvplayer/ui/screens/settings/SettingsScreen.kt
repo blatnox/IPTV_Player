@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -67,7 +68,8 @@ import java.util.Locale
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onBack: () -> Unit,
-    onAddNewAccount: () -> Unit
+    onAddNewAccount: () -> Unit,
+    onManageCategories: () -> Unit
 ) {
     val activeAccount by viewModel.activeAccount.collectAsState()
     val allAccounts by viewModel.allAccounts.collectAsState()
@@ -219,6 +221,75 @@ fun SettingsScreen(
                                         color = if (resumeLastChannel) Color.Black else TextPrimary,
                                         fontWeight = FontWeight.Bold
                                     )
+                                }
+                            }
+                        }
+                    }
+
+                    item {
+                        SettingsCard(title = "Categories") {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Manage Categories",
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            color = TextPrimary,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    )
+                                    Text(
+                                        text = "Select or hide categories to simplify your Live TV guide.",
+                                        style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
+                                    )
+                                }
+
+                                val manageInteraction = remember { MutableInteractionSource() }
+                                val isManageFocused by manageInteraction.collectIsFocusedAsState()
+                                val isManageHovered by manageInteraction.collectIsHoveredAsState()
+
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            when {
+                                                isManageFocused -> FocusCyan
+                                                isManageHovered -> SurfaceVariantDark
+                                                else -> SurfaceVariantDark.copy(alpha = 0.7f)
+                                            }
+                                        )
+                                        .border(
+                                            1.dp,
+                                            if (isManageFocused) FocusCyan else Color(0xFF232D3F),
+                                            RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable(
+                                            interactionSource = manageInteraction,
+                                            indication = null,
+                                            onClick = onManageCategories
+                                        )
+                                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.Visibility,
+                                            contentDescription = null,
+                                            tint = if (isManageFocused) Color.Black else FocusCyan,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Manage",
+                                            style = MaterialTheme.typography.labelMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isManageFocused) Color.Black else TextPrimary
+                                            )
+                                        )
+                                    }
                                 }
                             }
                         }

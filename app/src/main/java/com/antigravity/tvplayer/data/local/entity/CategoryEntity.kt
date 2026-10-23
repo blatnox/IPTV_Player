@@ -16,12 +16,14 @@ import androidx.room.Index
         )
     ],
     indices = [
-        Index(value = ["accountId"])
+        Index(value = ["accountId"]),
+        Index(value = ["accountId", "isHidden"])
     ]
 )
 data class CategoryEntity(
     val accountId: Long,
     val categoryId: String,
     val categoryName: String,
-    val parentId: Int = 0
+    val parentId: Int = 0,
+    val isHidden: Boolean = false
 )

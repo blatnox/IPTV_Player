@@ -101,6 +101,12 @@ class LiveTvViewModel @Inject constructor(
                         }
                     }
                     hasInitialized = true
+                } else if (hasInitialized && cats.isNotEmpty() && _selectedCategoryId.value != Category.FAVORITES_ID) {
+                    val exists = cats.any { it.id == _selectedCategoryId.value }
+                    if (!exists) {
+                        val fallback = cats.firstOrNull { it.id != Category.FAVORITES_ID } ?: cats.first()
+                        _selectedCategoryId.value = fallback.id
+                    }
                 }
             }
         }

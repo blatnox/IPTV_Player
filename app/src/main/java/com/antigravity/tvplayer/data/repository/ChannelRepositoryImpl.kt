@@ -28,11 +28,27 @@ class ChannelRepositoryImpl @Inject constructor(
 ) : ChannelRepository {
 
     override fun getCategories(accountId: Long): Flow<List<Category>> {
-        return categoryDao.getCategoriesForAccount(accountId).map { list ->
+        return categoryDao.getVisibleCategoriesForAccount(accountId).map { list ->
             val mapped = list.map { it.toDomain() }
             listOf(Category.favorites()) + mapped
         }.flowOn(Dispatchers.IO)
     }
+
+    override fun getAllCategories(accountId: Long): Flow<List<Category>> {
+        return categoryDao.getAllCategoriesForAccount(accountId).map { list ->
+            list.map { it.toDomain() }
+        }.flowOn(Dispatchers.IO)
+    }
+
+    override suspend fun setCategoryHidden(accountId: Long, categoryId: String, isHidden: Boolean) =
+        withContext(Dispatchers.IO) {
+            categoryDao.setCategoryHidden(accountId, categoryId, isHidden)
+        }
+
+    override suspend fun setAllCategoriesHidden(accountId: Long, isHidden: Boolean) =
+        withContext(Dispatchers.IO) {
+            categoryDao.setAllCategoriesHidden(accountId, isHidden)
+        }
 
     override fun getChannels(accountId: Long, categoryId: String): Flow<List<Channel>> {
         val channelsFlow = when {
@@ -131,7 +147,8 @@ class ChannelRepositoryImpl @Inject constructor(
     private fun CategoryEntity.toDomain() = Category(
         id = categoryId,
         name = categoryName,
-        parentId = parentId
+        parentId = parentId,
+        isHidden = isHidden
     )
 
     private fun ChannelEntity.toDomain(isFav: Boolean) = Channel(

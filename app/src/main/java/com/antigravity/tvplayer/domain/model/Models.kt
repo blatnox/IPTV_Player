@@ -18,7 +18,8 @@ data class Category(
     val id: String,
     val name: String,
     val parentId: Int = 0,
-    val isFavoritesCategory: Boolean = false
+    val isFavoritesCategory: Boolean = false,
+    val isHidden: Boolean = false
 ) {
     companion object {
         const val FAVORITES_ID = "FAVORITES_SPECIAL_CATEGORY_ID"

@@ -7,4 +7,5 @@ sealed class NavRoute(val route: String) {
         fun createRoute(streamId: Int): String = "player/$streamId"
     }
     data object Settings : NavRoute("settings")
+    data object ManageCategories : NavRoute("manage_categories")
 }

@@ -7,6 +7,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.antigravity.tvplayer.ui.screens.categories.ManageCategoriesScreen
+import com.antigravity.tvplayer.ui.screens.categories.ManageCategoriesViewModel
 import com.antigravity.tvplayer.ui.screens.live.LiveTvScreen
 import com.antigravity.tvplayer.ui.screens.live.LiveTvViewModel
 import com.antigravity.tvplayer.ui.screens.login.LoginScreen
@@ -80,6 +82,19 @@ fun TvNavHost(
                 },
                 onAddNewAccount = {
                     navController.navigate(NavRoute.Login.route)
+                },
+                onManageCategories = {
+                    navController.navigate(NavRoute.ManageCategories.route)
+                }
+            )
+        }
+
+        composable(NavRoute.ManageCategories.route) {
+            val viewModel: ManageCategoriesViewModel = hiltViewModel()
+            ManageCategoriesScreen(
+                viewModel = viewModel,
+                onBack = {
+                    navController.popBackStack()
                 }
             )
         }

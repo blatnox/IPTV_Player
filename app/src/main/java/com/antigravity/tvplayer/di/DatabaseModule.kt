@@ -2,6 +2,8 @@ package com.antigravity.tvplayer.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.antigravity.tvplayer.data.local.TvDatabase
 import com.antigravity.tvplayer.data.local.dao.AccountDao
 import com.antigravity.tvplayer.data.local.dao.CategoryDao
@@ -18,6 +20,13 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    private val MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE categories ADD COLUMN isHidden INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_categories_accountId_isHidden ON categories(accountId, isHidden)")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideTvDatabase(@ApplicationContext context: Context): TvDatabase {
@@ -26,6 +35,7 @@ object DatabaseModule {
             TvDatabase::class.java,
             "tv_player_database"
         )
+            .addMigrations(MIGRATION_1_2)
             .fallbackToDestructiveMigration()
             .build()
     }
