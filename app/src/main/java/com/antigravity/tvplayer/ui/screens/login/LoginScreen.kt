@@ -162,13 +162,28 @@ fun LoginScreen(
 
                 if (uiState.errorMessage != null) {
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = uiState.errorMessage ?: "",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = ErrorRed,
-                            fontWeight = FontWeight.SemiBold
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF3B1515))
+                            .border(2.dp, ErrorRed, RoundedCornerShape(10.dp))
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "⚠",
+                            style = MaterialTheme.typography.titleLarge.copy(color = ErrorRed)
                         )
-                    )
+                        Text(
+                            text = uiState.errorMessage ?: "",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                color = Color(0xFFFF8A80),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
