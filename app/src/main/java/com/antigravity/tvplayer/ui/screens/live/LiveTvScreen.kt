@@ -9,6 +9,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -309,31 +310,44 @@ fun CategoryListItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    Surface(
-        onClick = onClick,
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (isSelected) SurfaceVariantDark else Color.Transparent,
-            focusedContainerColor = FocusCyan,
-            focusedContentColor = Color.Black
-        ),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = category.name,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (category.isFavoritesCategory) FavoriteGold else TextPrimary
-                ),
-                maxLines = 1
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val isHovered by interactionSource.collectIsHoveredAsState()
+
+    val backgroundColor = when {
+        isFocused -> FocusCyan
+        isSelected -> SurfaceVariantDark
+        isHovered -> SurfaceVariantDark.copy(alpha = 0.7f)
+        else -> Color.Transparent
+    }
+
+    val contentColor = when {
+        isFocused -> Color.Black
+        category.isFavoritesCategory -> FavoriteGold
+        isSelected -> TextPrimary
+        else -> TextMuted
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(backgroundColor)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
             )
-        }
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = category.name,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = if (isSelected || isFocused) FontWeight.Bold else FontWeight.Normal,
+                color = contentColor
+            ),
+            maxLines = 1
+        )
     }
 }
 
@@ -347,27 +361,29 @@ fun ChannelListItem(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
+    val isHovered by interactionSource.collectIsHoveredAsState()
 
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.colors(
-            containerColor = SurfaceDark,
-            focusedContainerColor = FocusCyan
-        ),
-        shape = CardDefaults.shape(RoundedCornerShape(10.dp)),
+    val backgroundColor = when {
+        isFocused -> FocusCyan
+        isHovered -> SurfaceVariantDark
+        else -> SurfaceDark
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(backgroundColor)
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
                 onLongClick = onLongClick
             )
+            .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Channel Number
@@ -418,32 +434,32 @@ fun ChannelListItem(
                 modifier = Modifier.weight(1f)
             )
 
-            // Favorite Button (Clickable for mouse & touch, visible on focus)
-            Surface(
-                onClick = onToggleFavorite,
-                colors = ClickableSurfaceDefaults.colors(
-                    containerColor = Color.Transparent,
-                    focusedContainerColor = Color.Black.copy(alpha = 0.2f)
-                ),
-                shape = ClickableSurfaceDefaults.shape(CircleShape),
-                modifier = Modifier.size(36.dp)
+            // Favorite Button (Directly clickable for mouse & touch)
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onToggleFavorite
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (channel.isFavorite) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = "Favorite",
-                            tint = if (isFocused) Color.Black else FavoriteGold,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Outlined.StarBorder,
-                            contentDescription = "Add favorite",
-                            tint = if (isFocused) Color.Black.copy(alpha = 0.6f) else TextMuted,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
+                if (channel.isFavorite) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = "Favorite",
+                        tint = if (isFocused) Color.Black else FavoriteGold,
+                        modifier = Modifier.size(24.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.StarBorder,
+                        contentDescription = "Add favorite",
+                        tint = if (isFocused) Color.Black.copy(alpha = 0.6f) else TextMuted,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
         }
@@ -509,10 +525,12 @@ fun ChannelSearchBar(
                 )
             }
             if (query.isNotEmpty()) {
-                Surface(
-                    onClick = { onQueryChange("") },
-                    shape = ClickableSurfaceDefaults.shape(CircleShape),
-                    modifier = Modifier.size(24.dp)
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .clickable { onQueryChange("") },
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
@@ -533,31 +551,42 @@ fun HeaderIconButton(
     isLoading: Boolean = false,
     onClick: () -> Unit
 ) {
-    Surface(
-        onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.Transparent,
-            focusedContainerColor = FocusCyan,
-            focusedContentColor = Color.Black
-        ),
-        modifier = Modifier.size(36.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val isHovered by interactionSource.collectIsHoveredAsState()
+
+    val backgroundColor = when {
+        isFocused -> FocusCyan
+        isHovered -> SurfaceVariantDark
+        else -> SurfaceVariantDark.copy(alpha = 0.5f)
+    }
+
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(backgroundColor)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = !isLoading,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    color = FocusCyan,
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(18.dp)
-                )
-            } else {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = contentDescription,
-                    tint = TextSecondary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+        if (isLoading) {
+            CircularProgressIndicator(
+                color = FocusCyan,
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(18.dp)
+            )
+        } else {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = if (isFocused) Color.Black else TextSecondary,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }

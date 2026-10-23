@@ -88,17 +88,19 @@ class LiveTvViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            var hasInitialized = false
             combine(categories, activeAccount) { cats, acc ->
                 Pair(cats, acc)
             }.collect { (cats, acc) ->
-                if (acc != null && _selectedCategoryId.value == Category.FAVORITES_ID) {
-                    val firstContent = cats.firstOrNull { it.id != Category.FAVORITES_ID }
-                    if (firstContent != null) {
-                        val hasFavs = favoritesRepository.getFavoriteChannels(acc.id).first().isNotEmpty()
-                        if (!hasFavs) {
+                if (!hasInitialized && acc != null && cats.isNotEmpty()) {
+                    val hasFavs = favoritesRepository.getFavoriteChannels(acc.id).first().isNotEmpty()
+                    if (!hasFavs) {
+                        val firstContent = cats.firstOrNull { it.id != Category.FAVORITES_ID }
+                        if (firstContent != null && _selectedCategoryId.value == Category.FAVORITES_ID) {
                             _selectedCategoryId.value = firstContent.id
                         }
                     }
+                    hasInitialized = true
                 }
             }
         }
