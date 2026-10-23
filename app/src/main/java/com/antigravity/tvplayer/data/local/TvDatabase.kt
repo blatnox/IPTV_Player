@@ -18,7 +18,7 @@ import com.antigravity.tvplayer.data.local.entity.FavoriteEntity
         ChannelEntity::class,
         FavoriteEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class TvDatabase : RoomDatabase() {

@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -52,7 +53,7 @@ class ManageCategoriesViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val visibleCount: StateFlow<Int> = allCategories.combine(_searchQuery) { cats, _ ->
+    val visibleCount: StateFlow<Int> = allCategories.map { cats ->
         cats.count { !it.isHidden }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 

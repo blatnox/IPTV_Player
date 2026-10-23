@@ -141,7 +141,10 @@ fun PlayerScreen(
                 }
             },
             update = { playerView ->
-                playerView.player = viewModel.playerManager.initializePlayer()
+                val exoPlayer = viewModel.playerManager.initializePlayer()
+                if (playerView.player !== exoPlayer) {
+                    playerView.player = exoPlayer
+                }
             },
             modifier = Modifier.fillMaxSize()
         )

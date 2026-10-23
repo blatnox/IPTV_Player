@@ -30,6 +30,7 @@ class PlayerManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private var exoPlayer: ExoPlayer? = null
+    private var sharedDataSourceFactory: DefaultDataSource.Factory? = null
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
@@ -95,24 +96,25 @@ class PlayerManager @Inject constructor(
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
             .setEnableDecoderFallback(true)
 
-        // Low latency TV load control with generous buffer
+        // Fast channel-zapping TV load control with controlled memory footprint
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                /* minBufferMs = */ 15_000,
-                /* maxBufferMs = */ 50_000,
-                /* bufferForPlaybackMs = */ 2_500,
-                /* bufferForPlaybackAfterRebufferMs = */ 5_000
+                /* minBufferMs = */ 10_000,
+                /* maxBufferMs = */ 30_000,
+                /* bufferForPlaybackMs = */ 1_000,
+                /* bufferForPlaybackAfterRebufferMs = */ 2_500
             )
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
             .setUserAgent(userAgent)
-            .setConnectTimeoutMs(15_000)
-            .setReadTimeoutMs(30_000)
+            .setConnectTimeoutMs(12_000)
+            .setReadTimeoutMs(20_000)
             .setAllowCrossProtocolRedirects(true)
 
         val dataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
+        sharedDataSourceFactory = dataSourceFactory
 
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
@@ -146,14 +148,18 @@ class PlayerManager @Inject constructor(
         val player = exoPlayer ?: initializePlayer()
         val mediaItem = MediaItem.fromUri(url)
 
-        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-            .setConnectTimeoutMs(15_000)
-            .setReadTimeoutMs(30_000)
-            .setAllowCrossProtocolRedirects(true)
-        val dataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
+        val dataSourceFactory = sharedDataSourceFactory ?: DefaultDataSource.Factory(
+            context,
+            DefaultHttpDataSource.Factory()
+                .setConnectTimeoutMs(12_000)
+                .setReadTimeoutMs(20_000)
+                .setAllowCrossProtocolRedirects(true)
+        ).also { sharedDataSourceFactory = it }
 
         val mediaSource: MediaSource = if (url.endsWith(".m3u8", ignoreCase = true)) {
-            HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+            HlsMediaSource.Factory(dataSourceFactory)
+                .setAllowChunklessPreparation(true)
+                .createMediaSource(mediaItem)
         } else {
             ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
         }

@@ -79,16 +79,6 @@ fun PlayerOverlay(
     onTogglePlayPause: () -> Unit,
     onToggleFavorite: () -> Unit
 ) {
-    var currentTime by remember { mutableStateOf("") }
-
-    LaunchedEffect(Unit) {
-        val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
-        while (true) {
-            currentTime = sdf.format(Date())
-            delay(1000)
-        }
-    }
-
     Box(modifier = Modifier.fillMaxSize()) {
         // Top-Left Back Button for Mouse & Remote
         AnimatedVisibility(
@@ -365,18 +355,33 @@ fun PlayerOverlay(
 
                         Spacer(modifier = Modifier.width(6.dp))
 
-                        Text(
-                            text = currentTime,
-                            style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                        )
+                        OverlayClock()
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun OverlayClock() {
+    var currentTime by remember { mutableStateOf("") }
+    val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            currentTime = timeFormatter.format(Date())
+            delay(10_000L)
+        }
+    }
+
+    Text(
+        text = currentTime,
+        style = MaterialTheme.typography.headlineSmall.copy(
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary
+        )
+    )
 }
 
 @Composable

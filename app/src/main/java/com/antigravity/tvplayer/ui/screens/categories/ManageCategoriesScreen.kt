@@ -281,7 +281,11 @@ fun ManageCategoriesScreen(
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                     contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
-                    items(categories, key = { it.id }) { category ->
+                    items(
+                        items = categories,
+                        key = { it.id },
+                        contentType = { "category_toggle" }
+                    ) { category ->
                         CategoryToggleItem(
                             category = category,
                             onToggle = { viewModel.toggleCategory(category) }

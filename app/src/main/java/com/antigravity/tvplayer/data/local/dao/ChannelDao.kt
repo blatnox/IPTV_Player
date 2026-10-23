@@ -17,7 +17,7 @@ interface ChannelDao {
     @Query("SELECT * FROM channels WHERE accountId = :accountId AND categoryId = :categoryId ORDER BY num ASC, name ASC")
     fun getChannelsByCategory(accountId: Long, categoryId: String): Flow<List<ChannelEntity>>
 
-    @Query("SELECT * FROM channels WHERE accountId = :accountId AND name LIKE '%' || :query || '%' ORDER BY num ASC, name ASC")
+    @Query("SELECT * FROM channels WHERE accountId = :accountId AND name LIKE '%' || :query || '%' ORDER BY num ASC, name ASC LIMIT 300")
     fun searchChannels(accountId: Long, query: String): Flow<List<ChannelEntity>>
 
     @Query("SELECT * FROM channels WHERE accountId = :accountId AND streamId = :streamId LIMIT 1")
@@ -38,6 +38,8 @@ interface ChannelDao {
     @Transaction
     suspend fun replaceChannels(accountId: Long, channels: List<ChannelEntity>) {
         deleteChannelsForAccount(accountId)
-        insertChannels(channels)
+        channels.chunked(5000).forEach { chunk ->
+            insertChannels(chunk)
+        }
     }
 }

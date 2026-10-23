@@ -10,11 +10,13 @@ import com.antigravity.tvplayer.domain.repository.ChannelRepository
 import com.antigravity.tvplayer.domain.repository.FavoritesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -24,7 +26,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @HiltViewModel
 class LiveTvViewModel @Inject constructor(
     private val accountRepository: AccountRepository,
@@ -60,7 +62,7 @@ class LiveTvViewModel @Inject constructor(
     val channels: StateFlow<List<Channel>> = combine(
         activeAccount,
         _selectedCategoryId,
-        _searchQuery
+        _searchQuery.debounce { if (it.isBlank()) 0L else 220L }
     ) { account, categoryId, query ->
         Triple(account, categoryId, query)
     }.distinctUntilChanged()

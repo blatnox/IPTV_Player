@@ -42,6 +42,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,6 +57,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -67,6 +69,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.antigravity.tvplayer.domain.model.Category
 import com.antigravity.tvplayer.domain.model.Channel
 import com.antigravity.tvplayer.ui.theme.DarkBackground
@@ -172,7 +175,11 @@ fun LiveTvScreen(
                         .fillMaxSize()
                         .focusRequester(categoryFocusRequester)
                 ) {
-                    items(categories, key = { it.id }) { category ->
+                    items(
+                        items = categories,
+                        key = { it.id },
+                        contentType = { "category" }
+                    ) { category ->
                         CategoryListItem(
                             category = category,
                             isSelected = category.id == selectedCategoryId,
@@ -250,6 +257,9 @@ fun LiveTvScreen(
                     }
                 } else {
                     val channelListState = rememberLazyListState()
+                    LaunchedEffect(selectedCategoryId) {
+                        channelListState.scrollToItem(0)
+                    }
                     LazyColumn(
                         state = channelListState,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -258,7 +268,11 @@ fun LiveTvScreen(
                             .fillMaxSize()
                             .focusRequester(channelFocusRequester)
                     ) {
-                        items(channels, key = { it.streamId }) { channel ->
+                        items(
+                            items = channels,
+                            key = { it.streamId },
+                            contentType = { "channel" }
+                        ) { channel ->
                             ChannelListItem(
                                 channel = channel,
                                 onClick = {
@@ -405,8 +419,16 @@ fun ChannelListItem(
                 contentAlignment = Alignment.Center
             ) {
                 if (!channel.streamIcon.isNullOrBlank()) {
+                    val context = LocalContext.current
+                    val imageRequest = remember(channel.streamIcon) {
+                        ImageRequest.Builder(context)
+                            .data(channel.streamIcon)
+                            .size(88, 88)
+                            .allowRgb565(true)
+                            .build()
+                    }
                     AsyncImage(
-                        model = channel.streamIcon,
+                        model = imageRequest,
                         contentDescription = channel.name,
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize().padding(4.dp)

@@ -2,6 +2,7 @@ package com.antigravity.tvplayer.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.antigravity.tvplayer.data.local.TvDatabase
@@ -27,6 +28,13 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP INDEX IF EXISTS index_channels_accountId_categoryId")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_channels_accountId_categoryId_num ON channels(accountId, categoryId, num)")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideTvDatabase(@ApplicationContext context: Context): TvDatabase {
@@ -35,7 +43,8 @@ object DatabaseModule {
             TvDatabase::class.java,
             "tv_player_database"
         )
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
             .fallbackToDestructiveMigration()
             .build()
     }

@@ -27,6 +27,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class PlayerScreenUiState(
     val currentChannel: Channel? = null,
     val isOverlayVisible: Boolean = true,
