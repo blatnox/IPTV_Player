@@ -157,6 +157,8 @@ fun LoginScreen(
                     value = uiState.password,
                     placeholder = "Enter password",
                     isPassword = true,
+                    imeAction = ImeAction.Done,
+                    onImeAction = viewModel::login,
                     onValueChange = viewModel::onPasswordChange
                 )
 
@@ -288,6 +290,8 @@ fun TvInputField(
     modifier: Modifier = Modifier,
     isPassword: Boolean = false,
     autoFocus: Boolean = false,
+    imeAction: ImeAction = ImeAction.Next,
+    onImeAction: () -> Unit = {},
     onValueChange: (String) -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -317,8 +321,7 @@ fun TvInputField(
                     shape = RoundedCornerShape(8.dp)
                 )
                 .padding(horizontal = 16.dp, vertical = 12.dp)
-                .focusRequester(focusRequester)
-                .focusable(interactionSource = interactionSource),
+                .clickable { focusRequester.requestFocus() },
             contentAlignment = Alignment.CenterStart
         ) {
             if (value.isEmpty()) {
@@ -331,10 +334,15 @@ fun TvInputField(
                 value = value,
                 onValueChange = onValueChange,
                 singleLine = true,
+                interactionSource = interactionSource,
                 visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = if (isPassword) KeyboardType.Password else KeyboardType.Text,
-                    imeAction = ImeAction.Next
+                    imeAction = imeAction
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { onImeAction() },
+                    onDone = { onImeAction() }
                 ),
                 textStyle = TextStyle(
                     color = TextPrimary,
@@ -342,7 +350,9 @@ fun TvInputField(
                     fontWeight = FontWeight.Medium
                 ),
                 cursorBrush = SolidColor(FocusCyan),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
             )
         }
     }
@@ -426,13 +436,12 @@ fun AccountInfoDialog(
 
     LaunchedEffect(Unit) {
         continueFocusRequester.requestFocus()
+        kotlinx.coroutines.delay(2500)
+        onDismiss()
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.85f)),
-        contentAlignment = Alignment.Center
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss
     ) {
         Column(
             modifier = Modifier

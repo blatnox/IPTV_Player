@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -81,6 +82,22 @@ class LiveTvViewModel @Inject constructor(
                     val hasCache = channelRepository.hasCachedData(account.id)
                     if (!hasCache) {
                         refreshData()
+                    }
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            combine(categories, activeAccount) { cats, acc ->
+                Pair(cats, acc)
+            }.collect { (cats, acc) ->
+                if (acc != null && _selectedCategoryId.value == Category.FAVORITES_ID) {
+                    val firstContent = cats.firstOrNull { it.id != Category.FAVORITES_ID }
+                    if (firstContent != null) {
+                        val hasFavs = favoritesRepository.getFavoriteChannels(acc.id).first().isNotEmpty()
+                        if (!hasFavs) {
+                            _selectedCategoryId.value = firstContent.id
+                        }
                     }
                 }
             }
