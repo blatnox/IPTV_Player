@@ -34,7 +34,7 @@ class SettingsDataStore @Inject constructor(
     }
 
     val resumeLastChannel: Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[KEY_RESUME_LAST_CHANNEL] ?: true
+        prefs[KEY_RESUME_LAST_CHANNEL] ?: false
     }
 
     val lastWatchedStreamId: Flow<Int?> = context.dataStore.data.map { prefs ->
