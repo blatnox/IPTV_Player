@@ -25,7 +25,7 @@ class SettingsDataStore @Inject constructor(
         private val KEY_RESUME_LAST_CHANNEL = booleanPreferencesKey("resume_last_channel")
         private val KEY_LAST_WATCHED_STREAM_ID = intPreferencesKey("last_watched_stream_id")
         private val KEY_CUSTOM_USER_AGENT = stringPreferencesKey("custom_user_agent")
-        const val DEFAULT_USER_AGENT = "IPTVSmartersPro/3.1.5 (Linux; Android TV)"
+        const val DEFAULT_USER_AGENT = "TVPlayer/1.0 (Linux; Android TV)"
     }
 
     val preferredStreamFormat: Flow<StreamFormat> = context.dataStore.data.map { prefs ->

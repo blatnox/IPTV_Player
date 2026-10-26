@@ -1,4 +1,4 @@
-# Native Android TV IPTV Player (TiviMate / XCIPTV-Style)
+# Native Android TV IPTV Player
 
 A high-performance, native Android TV player built specifically for **Xiaomi TV Box** (Mi Box S / Xiaomi TV Box S, Android TV / Google TV 9–14+) and other Android TV devices. 
 
@@ -133,7 +133,7 @@ adb devices
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
-*Alternatively, copy `app-debug.apk` to a USB flash drive, plug it into the Xiaomi TV Box, and open it with any Android TV file manager (such as X-plore or File Commander).*
+*Alternatively, copy `app-debug.apk` to a USB flash drive, plug it into the Xiaomi TV Box, and open it with any Android TV file manager.*
 
 ---
 

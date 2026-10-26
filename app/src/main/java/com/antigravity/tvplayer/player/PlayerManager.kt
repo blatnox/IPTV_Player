@@ -188,7 +188,7 @@ class PlayerManager @Inject constructor(
         reconnectJob = null
     }
 
-    fun initializePlayer(userAgent: String = "IPTVSmartersPro/3.1.5 (Linux; Android TV)"): ExoPlayer {
+    fun initializePlayer(userAgent: String = "TVPlayer/1.0 (Linux; Android TV)"): ExoPlayer {
         exoPlayer?.let { return it }
 
         // Configure hardware acceleration renderers
