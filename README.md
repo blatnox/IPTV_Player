@@ -158,7 +158,7 @@ When testing on physical Xiaomi TV Box hardware:
 ## Nice to Have (Future Roadmap)
 
 ### 1. Live TV & Player Enhancements
-- **Live EPG ("Now & Next" Program Guide)**: Fetch `get_short_epg` for the active channel to display current and upcoming programs with a progress bar on the player overlay and channel list.
+- **Zero-Lag On-Demand "Now & Next" Info (No Bulk EPG)**: Intentionally avoid downloading heavy full-playlist XMLTV guides (which cause RAM bloat and UI freezes on 50k+ channel playlists). Instead, optionally fetch `get_short_epg&stream_id=...&limit=2` (~500 bytes in-memory only) strictly for the single currently playing channel, with zero database storage or background sync.
 - **In-Player Mini Channel Drawer**: Open a semi-transparent category/channel side drawer over the playing video so channels can be browsed without interrupting live playback.
 - **Auto-Reconnect on Stream Drop**: Automatically retry connecting (e.g., up to 3 attempts with a short backoff) if a live stream stalls or drops, plus a manual Retry button on the error overlay.
 - **Aspect Ratio / Zoom Toggle & Audio/Subtitle Selector**: Cycle between `Fit`, `Fill (16:9)`, and `Zoom` for 4:3 channels, and select alternate audio or subtitle tracks on multi-language streams.
