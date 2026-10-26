@@ -6,9 +6,8 @@ import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -21,7 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.util.UnstableApi
@@ -40,8 +40,10 @@ fun PlayerScreen(
 
     val focusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+    LaunchedEffect(uiState.isOverlayVisible) {
+        if (!uiState.isOverlayVisible) {
+            focusRequester.requestFocus()
+        }
     }
 
     BackHandler {
@@ -59,15 +61,7 @@ fun PlayerScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) {
-                viewModel.toggleOverlay()
-            }
-            .focusRequester(focusRequester)
-            .focusable()
-            .onKeyEvent { keyEvent ->
+            .onPreviewKeyEvent { keyEvent ->
                 if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
                     when (keyEvent.nativeKeyEvent.keyCode) {
                         KeyEvent.KEYCODE_DPAD_UP -> {
@@ -129,6 +123,8 @@ fun PlayerScreen(
                     false
                 }
             }
+            .focusRequester(focusRequester)
+            .focusable()
     ) {
         // Fullscreen ExoPlayer View
         AndroidView(
@@ -140,6 +136,8 @@ fun PlayerScreen(
                     )
                     useController = false
                     keepScreenOn = true
+                    isFocusable = false
+                    isFocusableInTouchMode = false
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                     player = viewModel.playerManager.initializePlayer()
                     setOnClickListener {
@@ -156,15 +154,14 @@ fun PlayerScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Click interceptor for Mouse and Touch on video area
+        // Click interceptor for Mouse and Touch on video area (non-focusable so DPAD stays on root)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) {
-                    viewModel.toggleOverlay()
+                .pointerInput(Unit) {
+                    detectTapGestures {
+                        viewModel.toggleOverlay()
+                    }
                 }
         )
 

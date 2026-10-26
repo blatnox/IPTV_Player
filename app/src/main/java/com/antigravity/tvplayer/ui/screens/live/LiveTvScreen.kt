@@ -123,6 +123,7 @@ fun LiveTvScreen(
                     channelListState.scrollToItem(viewModel.savedScrollIndex, viewModel.savedScrollOffset)
                 }
                 focusInChannels = true
+                viewModel.shouldRestoreChannelFocus = false
                 kotlinx.coroutines.delay(40)
                 runCatching { activeChannelFocusRequester.requestFocus() }
             }
