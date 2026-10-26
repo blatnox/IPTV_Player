@@ -98,7 +98,11 @@ fun PlayerScreen(
                         }
                         KeyEvent.KEYCODE_DPAD_CENTER,
                         KeyEvent.KEYCODE_ENTER -> {
-                            viewModel.toggleOverlay()
+                            if (playerState.errorMessage != null) {
+                                viewModel.playerManager.retry()
+                            } else {
+                                viewModel.toggleOverlay()
+                            }
                             true
                         }
                         KeyEvent.KEYCODE_INFO,
@@ -193,7 +197,8 @@ fun PlayerScreen(
                 if (playerState.isPlaying) viewModel.playerManager.pause()
                 else viewModel.playerManager.resume()
             },
-            onToggleFavorite = viewModel::toggleCurrentFavorite
+            onToggleFavorite = viewModel::toggleCurrentFavorite,
+            onRetry = { viewModel.playerManager.retry() }
         )
     }
 }

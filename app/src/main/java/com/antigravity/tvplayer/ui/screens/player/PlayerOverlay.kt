@@ -77,7 +77,8 @@ fun PlayerOverlay(
     onZapPrevious: () -> Unit,
     onZapNext: () -> Unit,
     onTogglePlayPause: () -> Unit,
-    onToggleFavorite: () -> Unit
+    onToggleFavorite: () -> Unit,
+    onRetry: () -> Unit = {}
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         // Top-Left Back Button for Mouse & Remote
@@ -139,7 +140,11 @@ fun PlayerOverlay(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = if (playerState.isUsingFallback) "Connecting via MPEG-TS…" else "Buffering…",
+                        text = when {
+                            playerState.retryAttempt > 0 -> "Reconnecting (${playerState.retryAttempt}/3)…"
+                            playerState.isUsingFallback -> "Connecting via fallback…"
+                            else -> "Buffering…"
+                        },
                         style = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary)
                     )
                 }
@@ -156,8 +161,8 @@ fun PlayerOverlay(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(SurfaceDark.copy(alpha = 0.9f))
-                        .padding(horizontal = 32.dp, vertical = 20.dp)
+                        .background(SurfaceDark.copy(alpha = 0.92f))
+                        .padding(horizontal = 32.dp, vertical = 22.dp)
                 ) {
                     Text(
                         text = "Stream Unavailable",
@@ -171,9 +176,34 @@ fun PlayerOverlay(
                         text = playerState.errorMessage,
                         style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    val retryInteraction = remember { MutableInteractionSource() }
+                    val isRetryHovered by retryInteraction.collectIsHoveredAsState()
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isRetryHovered) FocusCyan.copy(alpha = 0.85f) else FocusCyan)
+                            .clickable(
+                                interactionSource = retryInteraction,
+                                indication = null,
+                                onClick = onRetry
+                            )
+                            .padding(horizontal = 20.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Retry Stream (OK)",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        text = "Use D-pad Up / Down to switch channels.",
+                        text = "Press OK to retry or Up / Down to switch channels.",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
                     )
                 }
