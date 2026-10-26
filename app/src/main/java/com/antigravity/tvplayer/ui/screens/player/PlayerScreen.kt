@@ -133,6 +133,7 @@ fun PlayerScreen(
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
                     useController = false
+                    keepScreenOn = true
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                     player = viewModel.playerManager.initializePlayer()
                     setOnClickListener {
