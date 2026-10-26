@@ -70,12 +70,18 @@ fun PlayerScreen(
             .onKeyEvent { keyEvent ->
                 if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
                     when (keyEvent.nativeKeyEvent.keyCode) {
-                        KeyEvent.KEYCODE_DPAD_UP,
+                        KeyEvent.KEYCODE_DPAD_UP -> {
+                            viewModel.zapPrevious()
+                            true
+                        }
+                        KeyEvent.KEYCODE_DPAD_DOWN -> {
+                            viewModel.zapNext()
+                            true
+                        }
                         KeyEvent.KEYCODE_CHANNEL_UP -> {
                             viewModel.zapNext()
                             true
                         }
-                        KeyEvent.KEYCODE_DPAD_DOWN,
                         KeyEvent.KEYCODE_CHANNEL_DOWN -> {
                             viewModel.zapPrevious()
                             true
