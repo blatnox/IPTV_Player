@@ -2,6 +2,7 @@ package com.antigravity.tvplayer.ui.screens.live
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.antigravity.tvplayer.data.settings.SettingsDataStore
 import com.antigravity.tvplayer.domain.model.Account
 import com.antigravity.tvplayer.domain.model.Category
 import com.antigravity.tvplayer.domain.model.Channel
@@ -22,7 +23,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -31,11 +31,12 @@ import javax.inject.Inject
 class LiveTvViewModel @Inject constructor(
     private val accountRepository: AccountRepository,
     private val channelRepository: ChannelRepository,
-    private val favoritesRepository: FavoritesRepository
+    private val favoritesRepository: FavoritesRepository,
+    private val settingsDataStore: SettingsDataStore
 ) : ViewModel() {
 
     val activeAccount: StateFlow<Account?> = accountRepository.getActiveAccount()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+        .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     private val _selectedCategoryId = MutableStateFlow(Category.FAVORITES_ID)
     val selectedCategoryId: StateFlow<String> = _selectedCategoryId.asStateFlow()
@@ -49,6 +50,13 @@ class LiveTvViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private val _lastWatchedStreamId = MutableStateFlow<Int?>(null)
+    val lastWatchedStreamId: StateFlow<Int?> = _lastWatchedStreamId.asStateFlow()
+
+    var savedScrollIndex: Int = 0
+    var savedScrollOffset: Int = 0
+    var shouldRestoreChannelFocus: Boolean = false
+
     val categories: StateFlow<List<Category>> = activeAccount
         .flatMapLatest { account ->
             if (account != null) {
@@ -57,7 +65,7 @@ class LiveTvViewModel @Inject constructor(
                 flowOf(emptyList())
             }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val channels: StateFlow<List<Channel>> = combine(
         activeAccount,
@@ -75,7 +83,7 @@ class LiveTvViewModel @Inject constructor(
                 channelRepository.getChannels(account.id, categoryId)
             }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     init {
         viewModelScope.launch {
@@ -112,11 +120,32 @@ class LiveTvViewModel @Inject constructor(
                 }
             }
         }
+
+        viewModelScope.launch {
+            settingsDataStore.lastWatchedStreamId.collect { streamId ->
+                if (shouldRestoreChannelFocus && streamId != null && streamId > 0) {
+                    _lastWatchedStreamId.value = streamId
+                }
+            }
+        }
     }
 
     fun selectCategory(categoryId: String) {
+        if (_selectedCategoryId.value != categoryId) {
+            savedScrollIndex = 0
+            savedScrollOffset = 0
+            shouldRestoreChannelFocus = false
+            _lastWatchedStreamId.value = null
+        }
         _searchQuery.value = ""
         _selectedCategoryId.value = categoryId
+    }
+
+    fun onChannelClicked(streamId: Int, firstVisibleIndex: Int, firstVisibleOffset: Int) {
+        savedScrollIndex = firstVisibleIndex
+        savedScrollOffset = firstVisibleOffset
+        _lastWatchedStreamId.value = streamId
+        shouldRestoreChannelFocus = true
     }
 
     fun updateSearchQuery(query: String) {

@@ -80,6 +80,7 @@ import com.antigravity.tvplayer.ui.theme.SurfaceVariantDark
 import com.antigravity.tvplayer.ui.theme.TextMuted
 import com.antigravity.tvplayer.ui.theme.TextPrimary
 import com.antigravity.tvplayer.ui.theme.TextSecondary
+import kotlinx.coroutines.launch
 
 @Composable
 fun LiveTvScreen(
@@ -94,12 +95,39 @@ fun LiveTvScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val lastWatchedStreamId by viewModel.lastWatchedStreamId.collectAsState()
 
     var showExitDialog by remember { mutableStateOf(false) }
-    var focusInChannels by remember { mutableStateOf(false) }
+    var focusInChannels by remember { mutableStateOf(viewModel.shouldRestoreChannelFocus) }
+
+    val coroutineScope = rememberCoroutineScope()
+    val categoryListState = rememberLazyListState()
+    val channelListState = rememberLazyListState(
+        initialFirstVisibleItemIndex = viewModel.savedScrollIndex,
+        initialFirstVisibleItemScrollOffset = viewModel.savedScrollOffset
+    )
 
     val categoryFocusRequester = remember { FocusRequester() }
     val channelFocusRequester = remember { FocusRequester() }
+    val activeChannelFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(lastWatchedStreamId, channels.size) {
+        val targetId = lastWatchedStreamId
+        if (viewModel.shouldRestoreChannelFocus && targetId != null && channels.isNotEmpty()) {
+            val targetIndex = channels.indexOfFirst { it.streamId == targetId }
+            if (targetIndex >= 0) {
+                val visibleIndices = channelListState.layoutInfo.visibleItemsInfo.map { it.index }
+                if (visibleIndices.isNotEmpty() && targetIndex !in visibleIndices) {
+                    channelListState.scrollToItem((targetIndex - 2).coerceAtLeast(0))
+                } else if (visibleIndices.isEmpty() && viewModel.savedScrollIndex > 0) {
+                    channelListState.scrollToItem(viewModel.savedScrollIndex, viewModel.savedScrollOffset)
+                }
+                focusInChannels = true
+                kotlinx.coroutines.delay(40)
+                runCatching { activeChannelFocusRequester.requestFocus() }
+            }
+        }
+    }
 
     BackHandler {
         if (searchQuery.isNotEmpty()) {
@@ -167,7 +195,6 @@ fun LiveTvScreen(
                 }
 
                 // Categories
-                val categoryListState = rememberLazyListState()
                 LazyColumn(
                     state = categoryListState,
                     verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -184,7 +211,13 @@ fun LiveTvScreen(
                             category = category,
                             isSelected = category.id == selectedCategoryId,
                             onClick = {
+                                val changed = selectedCategoryId != category.id
                                 viewModel.selectCategory(category.id)
+                                if (changed) {
+                                    coroutineScope.launch {
+                                        channelListState.scrollToItem(0)
+                                    }
+                                }
                                 focusInChannels = true
                             }
                         )
@@ -256,10 +289,6 @@ fun LiveTvScreen(
                         }
                     }
                 } else {
-                    val channelListState = rememberLazyListState()
-                    LaunchedEffect(selectedCategoryId) {
-                        channelListState.scrollToItem(0)
-                    }
                     LazyColumn(
                         state = channelListState,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -273,10 +302,22 @@ fun LiveTvScreen(
                             key = { it.streamId },
                             contentType = { "channel" }
                         ) { channel ->
+                            val isLastWatched = channel.streamId == lastWatchedStreamId
                             ChannelListItem(
                                 channel = channel,
+                                isLastWatched = isLastWatched,
+                                modifier = if (isLastWatched) {
+                                    Modifier.focusRequester(activeChannelFocusRequester)
+                                } else {
+                                    Modifier
+                                },
                                 onClick = {
                                     focusInChannels = true
+                                    viewModel.onChannelClicked(
+                                        streamId = channel.streamId,
+                                        firstVisibleIndex = channelListState.firstVisibleItemIndex,
+                                        firstVisibleOffset = channelListState.firstVisibleItemScrollOffset
+                                    )
                                     onChannelSelected(channel)
                                 },
                                 onLongClick = {
@@ -369,6 +410,8 @@ fun CategoryListItem(
 @Composable
 fun ChannelListItem(
     channel: Channel,
+    isLastWatched: Boolean = false,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onToggleFavorite: () -> Unit
@@ -380,14 +423,22 @@ fun ChannelListItem(
     val backgroundColor = when {
         isFocused -> FocusCyan
         isHovered -> SurfaceVariantDark
+        isLastWatched -> SurfaceVariantDark.copy(alpha = 0.7f)
         else -> SurfaceDark
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
             .background(backgroundColor)
+            .then(
+                if (isLastWatched && !isFocused) {
+                    Modifier.border(1.dp, FocusCyan.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                } else {
+                    Modifier
+                }
+            )
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
