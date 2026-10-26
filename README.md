@@ -8,20 +8,24 @@ Designed strictly as a **player-only application**: the app ships with **no prel
 
 ## Features
 
-- **10-Foot UI for Android TV**: Built with Jetpack Compose for TV (`androidx.tv:tv-material`), featuring dark themes, high-contrast focus rings, safe-area overscan margins, and fluid D-pad navigation.
+- **10-Foot UI with Dual TV Remote & Mouse/Air-Mouse Support**: Built with Jetpack Compose for TV (`androidx.tv:tv-material`), featuring dark themes, high-contrast focus rings, hover states, and full click/scroll support for both standard TV remotes (D-pad) and wireless mice/air-mice.
 - **Xtream Codes API Integration**:
   - Connect via `{server}/player_api.php?username=U&password=P`.
   - Detailed account diagnostics: Account status, subscription expiry date, and active/maximum connection limits.
   - Multi-profile management: Switch between or delete multiple provider accounts with ease.
   - Encrypted credential storage backed by Android Keystore (`EncryptedSharedPreferences`).
-- **Channel & Category Browsing**:
+- **Channel & Category Browsing + Category Manager**:
   - Category list on the left with pinned **★ Favorites** at the top.
-  - Fast channel list on the right with channel numbers, names, and async channel logos (`stream_icon`) loaded via Coil with in-memory & disk caching.
-  - Real-time channel search by name.
-  - Offline Room database caching: Channels open instantly upon app launch, with background and manual playlist refresh capabilities.
+  - **Manage Categories Screen**: Show or hide individual categories (with search and Show All / Hide All) in Settings, persisted across playlist refreshes.
+  - Fast channel list on the right with channel numbers, names, and async channel logos (`stream_icon`) loaded via Coil with RGB_565 downsampling, memory & disk caching.
+  - Real-time debounced channel search by name.
+  - Offline Room database caching with WAL mode and composite indexing: 50,000+ channels open and filter instantaneously.
+  - Preserves exact channel scroll position and remote focus when returning from fullscreen playback.
 - **Full-Featured TV Playback**:
   - AndroidX Media3 (ExoPlayer) with hardware-accelerated HLS (`.m3u8`) and MPEG-TS (`.ts`) decoding.
-  - **Automatic Stream Fallback**: Automatically switches from `.m3u8` to `.ts` (or vice-versa) if stream playback encounters server-side format errors.
+  - **Auto-Reconnect & Stream Fallback**: Automatically reconnects on live stream `EOS`/resolution switches, recovers from live window drift, retries up to 3 times with backoff and `.m3u8` ↔ `.ts` fallback on network drops or stalls, and includes a manual **Retry Stream (OK)** button.
+  - Immediate stream socket release on Back/Home/Power off so 1-connection IPTV accounts are never locked out when switching between TV Boxes.
+  - Screen wake lock (`FLAG_KEEP_SCREEN_ON`) so the Android TV screensaver never interrupts live playback.
   - Quick channel zapping with D-pad Up/Down or remote Channel +/- keys.
   - Direct numeric channel jump (0–9 key buffer with auto-commit).
   - "Last Channel" quick-switch shortcut.
@@ -160,7 +164,6 @@ When testing on physical Xiaomi TV Box hardware:
 ### 1. Live TV & Player Enhancements
 - **Zero-Lag On-Demand "Now & Next" Info (No Bulk EPG)**: Intentionally avoid downloading heavy full-playlist XMLTV guides (which cause RAM bloat and UI freezes on 50k+ channel playlists). Instead, optionally fetch `get_short_epg&stream_id=...&limit=2` (~500 bytes in-memory only) strictly for the single currently playing channel, with zero database storage or background sync.
 - **In-Player Mini Channel Drawer**: Open a semi-transparent category/channel side drawer over the playing video so channels can be browsed without interrupting live playback.
-- **Auto-Reconnect on Stream Drop**: Automatically retry connecting (e.g., up to 3 attempts with a short backoff) if a live stream stalls or drops, plus a manual Retry button on the error overlay.
 - **Aspect Ratio / Zoom Toggle & Audio/Subtitle Selector**: Cycle between `Fit`, `Fill (16:9)`, and `Zoom` for 4:3 channels, and select alternate audio or subtitle tracks on multi-language streams.
 
 ### 2. Navigation & Organization
