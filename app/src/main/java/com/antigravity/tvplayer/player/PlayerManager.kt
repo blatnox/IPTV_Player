@@ -146,6 +146,10 @@ class PlayerManager @Inject constructor(
 
     private fun playInternal(url: String) {
         val player = exoPlayer ?: initializePlayer()
+        // Close any active stream socket first so 1-connection servers never see 2 open sockets
+        player.stop()
+        player.clearMediaItems()
+
         val mediaItem = MediaItem.fromUri(url)
 
         val dataSourceFactory = sharedDataSourceFactory ?: DefaultDataSource.Factory(
@@ -179,6 +183,7 @@ class PlayerManager @Inject constructor(
 
     fun stop() {
         exoPlayer?.stop()
+        exoPlayer?.clearMediaItems()
         _uiState.update { it.copy(isPlaying = false, isBuffering = false) }
     }
 
