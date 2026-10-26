@@ -152,3 +152,22 @@ When testing on physical Xiaomi TV Box hardware:
 - **Hardware Acceleration**: The app configures `DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER` and enables `hardwareAccelerated="true"` in the manifest to leverage the Amlogic video decoder (S905X / S905X4 SoC).
 - **Cleartext Traffic**: Enabled via `android:usesCleartextTraffic="true"` and `res/xml/network_security_config.xml` to support providers that stream over plain HTTP port 80/8080.
 - **TV Banner & Icon**: Includes a 320x180 landscape banner and declares `android.intent.category.LEANBACK_LAUNCHER` so the app appears prominently in the Android TV launcher row.
+
+---
+
+## Nice to Have (Future Roadmap)
+
+### 1. Live TV & Player Enhancements
+- **Live EPG ("Now & Next" Program Guide)**: Fetch `get_short_epg` for the active channel to display current and upcoming programs with a progress bar on the player overlay and channel list.
+- **In-Player Mini Channel Drawer**: Open a semi-transparent category/channel side drawer over the playing video so channels can be browsed without interrupting live playback.
+- **Auto-Reconnect on Stream Drop**: Automatically retry connecting (e.g., up to 3 attempts with a short backoff) if a live stream stalls or drops, plus a manual Retry button on the error overlay.
+- **Aspect Ratio / Zoom Toggle & Audio/Subtitle Selector**: Cycle between `Fit`, `Fill (16:9)`, and `Zoom` for 4:3 channels, and select alternate audio or subtitle tracks on multi-language streams.
+
+### 2. Navigation & Organization
+- **Recently Watched / History Category**: Virtual category (below `★ Favorites`) listing the last 15–20 watched channels for quick return.
+- **Custom Category Ordering**: Pin favorite categories to the top or reorder visible categories Up/Down.
+- **Backup & Restore Settings**: Export and import hidden categories and favorite channels to easily sync preferences across multiple TV Boxes.
+
+### 3. Content Expansion
+- **Movies (VOD) & TV Series Tabs**: Support Xtream `get_vod_streams` and `get_series` endpoints with poster grids, episode selectors, seekbar controls, and resume playback position.
+- **Catch-Up / TV Archive**: Replay past broadcasts (1–7 days) on channels where `tv_archive` is enabled.
