@@ -53,8 +53,10 @@ class LiveTvViewModel @Inject constructor(
     private val _lastWatchedStreamId = MutableStateFlow<Int?>(null)
     val lastWatchedStreamId: StateFlow<Int?> = _lastWatchedStreamId.asStateFlow()
 
+    var clickedStreamId: Int? = null
     var savedScrollIndex: Int = 0
     var savedScrollOffset: Int = 0
+    var pendingPlayerNavigation: Boolean = false
     var shouldRestoreChannelFocus: Boolean = false
 
     val categories: StateFlow<List<Category>> = activeAccount
@@ -123,7 +125,7 @@ class LiveTvViewModel @Inject constructor(
 
         viewModelScope.launch {
             settingsDataStore.lastWatchedStreamId.collect { streamId ->
-                if (shouldRestoreChannelFocus && streamId != null && streamId > 0) {
+                if ((pendingPlayerNavigation || shouldRestoreChannelFocus) && streamId != null && streamId > 0) {
                     _lastWatchedStreamId.value = streamId
                 }
             }
@@ -132,8 +134,10 @@ class LiveTvViewModel @Inject constructor(
 
     fun selectCategory(categoryId: String) {
         if (_selectedCategoryId.value != categoryId) {
+            clickedStreamId = null
             savedScrollIndex = 0
             savedScrollOffset = 0
+            pendingPlayerNavigation = false
             shouldRestoreChannelFocus = false
             _lastWatchedStreamId.value = null
         }
@@ -142,10 +146,18 @@ class LiveTvViewModel @Inject constructor(
     }
 
     fun onChannelClicked(streamId: Int, firstVisibleIndex: Int, firstVisibleOffset: Int) {
+        clickedStreamId = streamId
         savedScrollIndex = firstVisibleIndex
         savedScrollOffset = firstVisibleOffset
         _lastWatchedStreamId.value = streamId
-        shouldRestoreChannelFocus = true
+        pendingPlayerNavigation = true
+    }
+
+    fun onLiveTvDisposed() {
+        if (pendingPlayerNavigation) {
+            pendingPlayerNavigation = false
+            shouldRestoreChannelFocus = true
+        }
     }
 
     fun updateSearchQuery(query: String) {

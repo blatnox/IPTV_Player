@@ -42,6 +42,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -49,6 +50,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -111,20 +113,28 @@ fun LiveTvScreen(
     val channelFocusRequester = remember { FocusRequester() }
     val activeChannelFocusRequester = remember { FocusRequester() }
 
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.onLiveTvDisposed()
+        }
+    }
+
     LaunchedEffect(lastWatchedStreamId, channels.size) {
         val targetId = lastWatchedStreamId
         if (viewModel.shouldRestoreChannelFocus && targetId != null && channels.isNotEmpty()) {
             val targetIndex = channels.indexOfFirst { it.streamId == targetId }
             if (targetIndex >= 0) {
-                val visibleIndices = channelListState.layoutInfo.visibleItemsInfo.map { it.index }
-                if (visibleIndices.isNotEmpty() && targetIndex !in visibleIndices) {
-                    channelListState.scrollToItem((targetIndex - 2).coerceAtLeast(0))
-                } else if (visibleIndices.isEmpty() && viewModel.savedScrollIndex > 0) {
+                if (targetId == viewModel.clickedStreamId) {
                     channelListState.scrollToItem(viewModel.savedScrollIndex, viewModel.savedScrollOffset)
+                }
+                withFrameNanos { }
+                val visibleIndices = channelListState.layoutInfo.visibleItemsInfo.map { it.index }
+                if (targetIndex !in visibleIndices) {
+                    channelListState.scrollToItem((targetIndex - 3).coerceAtLeast(0))
+                    withFrameNanos { }
                 }
                 focusInChannels = true
                 viewModel.shouldRestoreChannelFocus = false
-                kotlinx.coroutines.delay(40)
                 runCatching { activeChannelFocusRequester.requestFocus() }
             }
         }

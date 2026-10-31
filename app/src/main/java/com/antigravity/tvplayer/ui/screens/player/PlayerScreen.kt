@@ -1,5 +1,7 @@
 package com.antigravity.tvplayer.ui.screens.player
 
+import android.content.Context
+import android.content.ContextWrapper
 import android.view.KeyEvent
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -23,10 +25,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -54,17 +56,18 @@ fun PlayerScreen(
         onBackToLiveTv()
     }
 
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
+    val context = LocalContext.current
+    val activityLifecycle = remember(context) { context.findActivityLifecycle() }
+    DisposableEffect(activityLifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_STOP) {
                 viewModel.playerManager.stop()
                 onBackToLiveTv()
             }
         }
-        lifecycleOwner.lifecycle.addObserver(observer)
+        activityLifecycle?.addObserver(observer)
         onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
+            activityLifecycle?.removeObserver(observer)
             viewModel.playerManager.stop()
         }
     }
@@ -201,4 +204,10 @@ fun PlayerScreen(
             onRetry = { viewModel.playerManager.retry() }
         )
     }
+}
+
+private tailrec fun Context.findActivityLifecycle(): Lifecycle? = when (this) {
+    is LifecycleOwner -> this.lifecycle
+    is ContextWrapper -> baseContext.findActivityLifecycle()
+    else -> null
 }
