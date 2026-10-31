@@ -163,12 +163,13 @@ When testing on physical Xiaomi TV Box hardware:
 ## Nice to Have (Future Roadmap)
 
 ### 1. Live TV & Player Enhancements
-- **Zero-Lag On-Demand "Now & Next" Info (No Bulk EPG)**: Intentionally avoid downloading heavy full-playlist XMLTV guides (which cause RAM bloat and UI freezes on 50k+ channel playlists). Instead, optionally fetch `get_short_epg&stream_id=...&limit=2` (~500 bytes in-memory only) strictly for the single currently playing channel, with zero database storage or background sync.
-- **Aspect Ratio / Zoom Toggle & Audio/Subtitle Selector**: Cycle between `Fit`, `Fill (16:9)`, and `Zoom` for 4:3 channels, and select alternate audio or subtitle tracks on multi-language streams.
+- **Zero-Lag On-Demand "Now & Next" Info (No Bulk EPG)**: Intentionally avoid downloading heavy full-playlist XMLTV guides (which cause RAM bloat and UI freezes on 50k+ channel playlists). Instead, fetch `get_short_epg&stream_id=...&limit=2` (~500 bytes in-memory only) strictly for the single currently playing channel to show Current Program, Progress Bar, and "Next: …" inside the player overlay with zero database storage or background sync.
+- **Aspect Ratio (`Fit / Fill / Zoom`) & Audio/Subtitle Track Selector**: Cycle between `Fit`, `Fill (16:9)`, and `Zoom` to eliminate black bars or stretched 4:3 broadcasts, and switch language/commentary audio or subtitle tracks on multi-track streams directly from the player bar.
 
 ### 2. Navigation & Organization
-- **Custom Category Ordering**: Pin favorite categories to the top or reorder visible categories Up/Down.
-- **Backup & Restore Settings**: Export and import hidden categories and favorite channels to easily sync preferences across multiple TV Boxes.
+- **Global Search Across All Visible Categories**: Add a 1-click `This Category` ↔ `All Categories` toggle next to the search bar to search across all non-hidden categories in SQLite (`<5ms`) without needing to know which category folder a channel belongs to.
+- **Custom Category Ordering & Pinning**: Pin favorite categories (e.g., Sports, Kids, Country) to the top or reorder visible categories Up/Down in Manage Categories, preserved across playlist refreshes.
+- **Backup & Restore Setup Across TV Boxes**: One-click Export / Import (`tv_player_backup.json`) for `★ Favorites`, hidden categories, custom category order, and player preferences to easily clone setups across multiple Xiaomi TV Boxes.
 
 ### 3. Content Expansion
 - **Movies (VOD) & TV Series Tabs**: Support Xtream `get_vod_streams` and `get_series` endpoints with poster grids, episode selectors, seekbar controls, and resume playback position.
