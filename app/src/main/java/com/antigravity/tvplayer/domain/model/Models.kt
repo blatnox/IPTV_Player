@@ -23,14 +23,23 @@ data class Category(
     val name: String,
     val parentId: Int = 0,
     val isFavoritesCategory: Boolean = false,
+    val isRecentCategory: Boolean = false,
     val isHidden: Boolean = false
 ) {
     companion object {
         const val FAVORITES_ID = "FAVORITES_SPECIAL_CATEGORY_ID"
+        const val RECENT_ID = "RECENT_SPECIAL_CATEGORY_ID"
+
         fun favorites() = Category(
             id = FAVORITES_ID,
             name = "★ Favorites",
             isFavoritesCategory = true
+        )
+
+        fun recent() = Category(
+            id = RECENT_ID,
+            name = "⟳ Recent",
+            isRecentCategory = true
         )
     }
 }
@@ -43,5 +52,8 @@ data class Channel(
     val streamIcon: String?,
     val epgChannelId: String?,
     val categoryId: String,
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val displayName: String = name,
+    val qualityBadge: String? = null,
+    val isSeparator: Boolean = false
 )

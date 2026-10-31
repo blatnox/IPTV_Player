@@ -5,10 +5,13 @@ import com.antigravity.tvplayer.data.api.XtreamUrlBuilder
 import com.antigravity.tvplayer.data.local.dao.CategoryDao
 import com.antigravity.tvplayer.data.local.dao.ChannelDao
 import com.antigravity.tvplayer.data.local.dao.FavoriteDao
+import com.antigravity.tvplayer.data.local.dao.RecentChannelDao
 import com.antigravity.tvplayer.data.local.entity.CategoryEntity
 import com.antigravity.tvplayer.data.local.entity.ChannelEntity
+import com.antigravity.tvplayer.data.local.entity.RecentChannelEntity
 import com.antigravity.tvplayer.domain.model.Category
 import com.antigravity.tvplayer.domain.model.Channel
+import com.antigravity.tvplayer.domain.model.ChannelNameFormatter
 import com.antigravity.tvplayer.domain.repository.ChannelRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -24,13 +27,14 @@ class ChannelRepositoryImpl @Inject constructor(
     private val apiService: XtreamApiService,
     private val categoryDao: CategoryDao,
     private val channelDao: ChannelDao,
-    private val favoriteDao: FavoriteDao
+    private val favoriteDao: FavoriteDao,
+    private val recentChannelDao: RecentChannelDao
 ) : ChannelRepository {
 
     override fun getCategories(accountId: Long): Flow<List<Category>> {
         return categoryDao.getVisibleCategoriesForAccount(accountId).map { list ->
             val mapped = list.map { it.toDomain() }
-            listOf(Category.favorites()) + mapped
+            listOf(Category.favorites(), Category.recent()) + mapped
         }.flowOn(Dispatchers.IO)
     }
 
@@ -53,6 +57,7 @@ class ChannelRepositoryImpl @Inject constructor(
     override fun getChannels(accountId: Long, categoryId: String): Flow<List<Channel>> {
         val channelsFlow = when {
             categoryId == Category.FAVORITES_ID -> favoriteDao.getFavoriteChannels(accountId)
+            categoryId == Category.RECENT_ID -> recentChannelDao.getRecentChannels(accountId)
             categoryId.isBlank() -> channelDao.getAllChannels(accountId)
             else -> channelDao.getChannelsByCategory(accountId, categoryId)
         }
@@ -87,6 +92,18 @@ class ChannelRepositoryImpl @Inject constructor(
             val channel = channelDao.getChannelByStreamIdSync(accountId, streamId) ?: return@withContext null
             val isFav = favoriteDao.isFavoriteSync(accountId, streamId)
             channel.toDomain(isFav)
+        }
+
+    override suspend fun recordRecentChannel(accountId: Long, streamId: Int) =
+        withContext(Dispatchers.IO) {
+            recentChannelDao.upsertRecent(
+                RecentChannelEntity(
+                    accountId = accountId,
+                    streamId = streamId,
+                    watchedAt = System.currentTimeMillis()
+                )
+            )
+            recentChannelDao.trimRecentChannels(accountId)
         }
 
     override suspend fun hasCachedData(accountId: Long): Boolean = withContext(Dispatchers.IO) {
@@ -151,13 +168,19 @@ class ChannelRepositoryImpl @Inject constructor(
         isHidden = isHidden
     )
 
-    private fun ChannelEntity.toDomain(isFav: Boolean) = Channel(
-        streamId = streamId,
-        num = num,
-        name = name,
-        streamIcon = streamIcon,
-        epgChannelId = epgChannelId,
-        categoryId = categoryId,
-        isFavorite = isFav
-    )
+    private fun ChannelEntity.toDomain(isFav: Boolean): Channel {
+        val parsed = ChannelNameFormatter.parse(name)
+        return Channel(
+            streamId = streamId,
+            num = num,
+            name = name,
+            streamIcon = streamIcon,
+            epgChannelId = epgChannelId,
+            categoryId = categoryId,
+            isFavorite = isFav,
+            displayName = parsed.displayName,
+            qualityBadge = parsed.qualityBadge,
+            isSeparator = parsed.isSeparator
+        )
+    }
 }

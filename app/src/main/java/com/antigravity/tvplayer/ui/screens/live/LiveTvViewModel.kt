@@ -107,16 +107,25 @@ class LiveTvViewModel @Inject constructor(
                 if (!hasInitialized && acc != null && cats.isNotEmpty()) {
                     val hasFavs = favoritesRepository.getFavoriteChannels(acc.id).first().isNotEmpty()
                     if (!hasFavs) {
-                        val firstContent = cats.firstOrNull { it.id != Category.FAVORITES_ID }
+                        val firstContent = cats.firstOrNull {
+                            it.id != Category.FAVORITES_ID && it.id != Category.RECENT_ID
+                        }
                         if (firstContent != null && _selectedCategoryId.value == Category.FAVORITES_ID) {
                             _selectedCategoryId.value = firstContent.id
                         }
                     }
                     hasInitialized = true
-                } else if (hasInitialized && cats.isNotEmpty() && _selectedCategoryId.value != Category.FAVORITES_ID) {
+                } else if (
+                    hasInitialized &&
+                    cats.isNotEmpty() &&
+                    _selectedCategoryId.value != Category.FAVORITES_ID &&
+                    _selectedCategoryId.value != Category.RECENT_ID
+                ) {
                     val exists = cats.any { it.id == _selectedCategoryId.value }
                     if (!exists) {
-                        val fallback = cats.firstOrNull { it.id != Category.FAVORITES_ID } ?: cats.first()
+                        val fallback = cats.firstOrNull {
+                            it.id != Category.FAVORITES_ID && it.id != Category.RECENT_ID
+                        } ?: cats.first()
                         _selectedCategoryId.value = fallback.id
                     }
                 }
@@ -127,6 +136,13 @@ class LiveTvViewModel @Inject constructor(
             settingsDataStore.lastWatchedStreamId.collect { streamId ->
                 if ((pendingPlayerNavigation || shouldRestoreChannelFocus) && streamId != null && streamId > 0) {
                     _lastWatchedStreamId.value = streamId
+                    val account = activeAccount.value
+                    if (account != null && channels.value.none { it.streamId == streamId }) {
+                        val watchedChannel = channelRepository.getChannelByStreamIdSync(account.id, streamId)
+                        if (watchedChannel != null && watchedChannel.categoryId.isNotBlank()) {
+                            _selectedCategoryId.value = watchedChannel.categoryId
+                        }
+                    }
                 }
             }
         }

@@ -10,6 +10,7 @@ import com.antigravity.tvplayer.data.local.dao.AccountDao
 import com.antigravity.tvplayer.data.local.dao.CategoryDao
 import com.antigravity.tvplayer.data.local.dao.ChannelDao
 import com.antigravity.tvplayer.data.local.dao.FavoriteDao
+import com.antigravity.tvplayer.data.local.dao.RecentChannelDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,6 +36,24 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `recent_channels` (
+                    `accountId` INTEGER NOT NULL,
+                    `streamId` INTEGER NOT NULL,
+                    `watchedAt` INTEGER NOT NULL,
+                    PRIMARY KEY(`accountId`, `streamId`),
+                    FOREIGN KEY(`accountId`) REFERENCES `accounts`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_recent_channels_accountId` ON `recent_channels` (`accountId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_recent_channels_accountId_watchedAt` ON `recent_channels` (`accountId`, `watchedAt`)")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideTvDatabase(@ApplicationContext context: Context): TvDatabase {
@@ -43,7 +62,7 @@ object DatabaseModule {
             TvDatabase::class.java,
             "tv_player_database"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
             .fallbackToDestructiveMigration()
             .build()
@@ -60,4 +79,7 @@ object DatabaseModule {
 
     @Provides
     fun provideFavoriteDao(database: TvDatabase): FavoriteDao = database.favoriteDao()
+
+    @Provides
+    fun provideRecentChannelDao(database: TvDatabase): RecentChannelDao = database.recentChannelDao()
 }

@@ -1,5 +1,6 @@
 package com.antigravity.tvplayer.ui.screens.player
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -15,29 +16,34 @@ import com.antigravity.tvplayer.domain.repository.FavoritesRepository
 import com.antigravity.tvplayer.player.PlayerManager
 import com.antigravity.tvplayer.player.PlayerUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-import androidx.compose.runtime.Immutable
-
 @Immutable
 data class PlayerScreenUiState(
     val currentChannel: Channel? = null,
+    val currentChannelDisplayNumber: Int = 0,
     val isOverlayVisible: Boolean = true,
+    val isChannelDrawerOpen: Boolean = false,
     val numberBuffer: String = "",
     val previousStreamId: Int? = null,
     val preferredFormat: StreamFormat = StreamFormat.M3U8
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
@@ -53,6 +59,30 @@ class PlayerViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(PlayerScreenUiState())
     val uiState: StateFlow<PlayerScreenUiState> = _uiState.asStateFlow()
 
+    private val _activeAccountFlow = MutableStateFlow<Account?>(null)
+    private val _activeZapCategoryId = MutableStateFlow("")
+    private val _drawerSelectedCategoryId = MutableStateFlow("")
+    val drawerSelectedCategoryId: StateFlow<String> = _drawerSelectedCategoryId.asStateFlow()
+
+    val drawerCategories: StateFlow<List<Category>> = _activeAccountFlow
+        .flatMapLatest { acc ->
+            if (acc != null) channelRepository.getCategories(acc.id) else flowOf(emptyList())
+        }
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val drawerChannels: StateFlow<List<Channel>> = combine(
+        _activeAccountFlow,
+        _drawerSelectedCategoryId
+    ) { acc, catId ->
+        Pair(acc, catId)
+    }.flatMapLatest { (acc, catId) ->
+        if (acc == null || catId.isBlank()) {
+            flowOf(emptyList())
+        } else {
+            channelRepository.getChannels(acc.id, catId)
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     private var activeAccount: Account? = null
     private var channelList: List<Channel> = emptyList()
     private var overlayHideJob: Job? = null
@@ -67,6 +97,7 @@ class PlayerViewModel @Inject constructor(
 
             val account = accountRepository.getActiveAccountSync()
             activeAccount = account
+            _activeAccountFlow.value = account
 
             if (account != null) {
                 val targetChannel = if (initialStreamId > 0) {
@@ -74,18 +105,30 @@ class PlayerViewModel @Inject constructor(
                 } else null
 
                 if (targetChannel != null) {
+                    _activeZapCategoryId.value = targetChannel.categoryId
+                    _drawerSelectedCategoryId.value = targetChannel.categoryId
                     playChannel(targetChannel)
-                    channelRepository.getChannels(account.id, targetChannel.categoryId).collect { list ->
-                        channelList = list
-                    }
                 } else {
                     val firstCat = channelRepository.getCategories(account.id).first()
-                        .firstOrNull { it.id != Category.FAVORITES_ID }
+                        .firstOrNull { it.id != Category.FAVORITES_ID && it.id != Category.RECENT_ID }
                     val catId = firstCat?.id ?: ""
-                    channelRepository.getChannels(account.id, catId).collect { list ->
-                        channelList = list
-                        if (_uiState.value.currentChannel == null && list.isNotEmpty()) {
-                            playChannel(list.first())
+                    _activeZapCategoryId.value = catId
+                    _drawerSelectedCategoryId.value = catId
+                }
+
+                _activeZapCategoryId.flatMapLatest { catId ->
+                    if (catId.isBlank()) flowOf(emptyList())
+                    else channelRepository.getChannels(account.id, catId)
+                }.collect { rawList ->
+                    val playable = rawList.filter { !it.isSeparator }
+                    channelList = playable
+                    val current = _uiState.value.currentChannel
+                    if (current == null && playable.isNotEmpty()) {
+                        playChannel(playable.first())
+                    } else if (current != null) {
+                        val idx = playable.indexOfFirst { it.streamId == current.streamId }
+                        if (idx >= 0) {
+                            _uiState.update { it.copy(currentChannelDisplayNumber = idx + 1) }
                         }
                     }
                 }
@@ -94,19 +137,23 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun playChannel(channel: Channel) {
+        if (channel.isSeparator) return
         val account = activeAccount ?: return
         val previousId = _uiState.value.currentChannel?.streamId
+        val seqIdx = channelList.indexOfFirst { it.streamId == channel.streamId }
 
         _uiState.update {
             it.copy(
                 currentChannel = channel,
+                currentChannelDisplayNumber = if (seqIdx >= 0) seqIdx + 1 else 0,
                 previousStreamId = if (previousId != null && previousId != channel.streamId) previousId else it.previousStreamId
             )
         }
 
-        // Save last watched
+        // Save last watched & add to Recent Channels history (capped at 20 rows)
         viewModelScope.launch {
             settingsDataStore.setLastWatchedStreamId(channel.streamId)
+            channelRepository.recordRecentChannel(account.id, channel.streamId)
         }
 
         val format = _uiState.value.preferredFormat
@@ -119,7 +166,6 @@ class PlayerViewModel @Inject constructor(
         )
 
         playerManager.play(primaryUrl) { failedUrl ->
-            // Fallback between m3u8 and ts
             val fallbackFormat = if (failedUrl.endsWith(".m3u8", ignoreCase = true)) StreamFormat.TS else StreamFormat.M3U8
             XtreamUrlBuilder.buildStreamUrl(
                 serverUrl = account.serverUrl,
@@ -131,6 +177,38 @@ class PlayerViewModel @Inject constructor(
         }
 
         showOverlay()
+    }
+
+    fun openChannelDrawer() {
+        overlayHideJob?.cancel()
+        val currentCat = _uiState.value.currentChannel?.categoryId
+        if (_drawerSelectedCategoryId.value.isBlank() && !currentCat.isNullOrBlank()) {
+            _drawerSelectedCategoryId.value = currentCat
+        }
+        _uiState.update {
+            it.copy(
+                isOverlayVisible = false,
+                isChannelDrawerOpen = true
+            )
+        }
+    }
+
+    fun closeChannelDrawer() {
+        _uiState.update { it.copy(isChannelDrawerOpen = false) }
+    }
+
+    fun selectDrawerCategory(categoryId: String) {
+        _drawerSelectedCategoryId.value = categoryId
+    }
+
+    fun playChannelFromDrawer(channel: Channel) {
+        if (channel.isSeparator) return
+        val selectedCat = _drawerSelectedCategoryId.value
+        if (selectedCat.isNotBlank()) {
+            _activeZapCategoryId.value = selectedCat
+        }
+        _uiState.update { it.copy(isChannelDrawerOpen = false) }
+        playChannel(channel)
     }
 
     fun zapNext() {
@@ -159,8 +237,20 @@ class PlayerViewModel @Inject constructor(
 
     fun zapLastChannel() {
         val prevId = _uiState.value.previousStreamId ?: return
-        val target = channelList.find { it.streamId == prevId } ?: return
-        playChannel(target)
+        val inCurrentList = channelList.find { it.streamId == prevId }
+        if (inCurrentList != null) {
+            playChannel(inCurrentList)
+        } else {
+            val account = activeAccount ?: return
+            viewModelScope.launch {
+                val target = channelRepository.getChannelByStreamIdSync(account.id, prevId)
+                if (target != null) {
+                    _activeZapCategoryId.value = target.categoryId
+                    _drawerSelectedCategoryId.value = target.categoryId
+                    playChannel(target)
+                }
+            }
+        }
     }
 
     fun onNumberKeyPressed(digit: Int) {
@@ -170,10 +260,14 @@ class PlayerViewModel @Inject constructor(
         showOverlay()
 
         numberBufferJob = viewModelScope.launch {
-            delay(1500)
+            delay(1400)
             val channelNum = newBuffer.toIntOrNull()
-            if (channelNum != null) {
-                val found = channelList.find { it.num == channelNum }
+            if (channelNum != null && channelNum > 0) {
+                val found = if (channelNum <= channelList.size) {
+                    channelList[channelNum - 1]
+                } else {
+                    channelList.find { it.num == channelNum }
+                }
                 if (found != null) {
                     playChannel(found)
                 }
@@ -197,6 +291,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun showOverlay() {
+        if (_uiState.value.isChannelDrawerOpen) return
         overlayHideJob?.cancel()
         _uiState.update { it.copy(isOverlayVisible = true) }
         overlayHideJob = viewModelScope.launch {
@@ -206,6 +301,10 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun toggleOverlay() {
+        if (_uiState.value.isChannelDrawerOpen) {
+            closeChannelDrawer()
+            return
+        }
         if (_uiState.value.isOverlayVisible) {
             overlayHideJob?.cancel()
             _uiState.update { it.copy(isOverlayVisible = false) }

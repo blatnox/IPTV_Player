@@ -15,18 +15,18 @@ Designed strictly as a **player-only application**: the app ships with **no prel
   - Multi-profile management: Switch between or delete multiple provider accounts with ease.
   - Encrypted credential storage backed by Android Keystore (`EncryptedSharedPreferences`).
 - **Channel & Category Browsing + Category Manager**:
-  - Category list on the left with pinned **★ Favorites** at the top.
+  - Category list on the left with pinned **★ Favorites** and **⟳ Recent** (last 20 watched channels) at the top.
   - **Manage Categories Screen**: Show or hide individual categories (with search and Show All / Hide All) in Settings, persisted across playlist refreshes.
-  - Fast channel list on the right with channel numbers, names, and async channel logos (`stream_icon`) loaded via Coil with RGB_565 downsampling, memory & disk caching.
-  - Real-time debounced channel search by name.
+  - **Modern Guide Polish**: Top header bar with active category title, playable channel count, debounced search bar, and live `HH:mm` clock; automatic section dividers for provider separator rows (`#### ... ####`); sequential `1..N` channel numbering; color-coded quality pills (`4K`, `RAW`, `FHD`, `HEVC`, `HD`); and async channel logos (`stream_icon`) loaded via Coil with RGB_565 downsampling.
   - Offline Room database caching with WAL mode and composite indexing: 50,000+ channels open and filter instantaneously.
   - Preserves exact channel scroll position and remote focus when returning from fullscreen playback.
 - **Full-Featured TV Playback**:
   - AndroidX Media3 (ExoPlayer) with hardware-accelerated HLS (`.m3u8`) and MPEG-TS (`.ts`) decoding.
+  - **In-Player Quick Channel Drawer**: Press **D-pad Right (`▶`)** or click **Channels** in the floating player bar to browse categories and channels in a translucent overlay while live video keeps playing uninterrupted.
   - **Auto-Reconnect & Stream Fallback**: Automatically reconnects on live stream `EOS`/resolution switches, recovers from live window drift, retries up to 3 times with backoff and `.m3u8` ↔ `.ts` fallback on network drops or stalls, and includes a manual **Retry Stream (OK)** button.
   - Immediate stream socket release on Back/Home/Power off so 1-connection IPTV accounts are never locked out when switching between TV Boxes.
   - Screen wake lock (`FLAG_KEEP_SCREEN_ON`) so the Android TV screensaver never interrupts live playback.
-  - Quick channel zapping with D-pad Up/Down or remote Channel +/- keys.
+  - Quick channel zapping with D-pad Up/Down or remote Channel +/- keys (automatically skipping non-playable section dividers).
   - Direct numeric channel jump (0–9 key buffer with auto-commit).
   - "Last Channel" quick-switch shortcut.
   - Optional setting to resume the last watched channel immediately on app launch.
@@ -74,7 +74,8 @@ com.antigravity.tvplayer/
 | Remote Key | In Channel List | In Fullscreen Player |
 |---|---|---|
 | **D-pad Up / Down** | Navigate categories & channels | Switch to previous / next channel |
-| **D-pad Left / Right** | Move between Categories & Channels | Left: Quick-switch to last channel |
+| **D-pad Left** | Move from Channels to Categories | Quick-switch to last channel |
+| **D-pad Right** | Move from Categories to Channels | Open In-Player Quick Channel Drawer |
 | **OK / Center Click** | Open channel & play | Toggle player overlay |
 | **OK Long-Press** | **Toggle Favorite (★)** | — |
 | **Number Keys (0–9)** | — | Direct channel jump (e.g. `1`, `4` → Channel 14) |
@@ -163,11 +164,9 @@ When testing on physical Xiaomi TV Box hardware:
 
 ### 1. Live TV & Player Enhancements
 - **Zero-Lag On-Demand "Now & Next" Info (No Bulk EPG)**: Intentionally avoid downloading heavy full-playlist XMLTV guides (which cause RAM bloat and UI freezes on 50k+ channel playlists). Instead, optionally fetch `get_short_epg&stream_id=...&limit=2` (~500 bytes in-memory only) strictly for the single currently playing channel, with zero database storage or background sync.
-- **In-Player Mini Channel Drawer**: Open a semi-transparent category/channel side drawer over the playing video so channels can be browsed without interrupting live playback.
 - **Aspect Ratio / Zoom Toggle & Audio/Subtitle Selector**: Cycle between `Fit`, `Fill (16:9)`, and `Zoom` for 4:3 channels, and select alternate audio or subtitle tracks on multi-language streams.
 
 ### 2. Navigation & Organization
-- **Recently Watched / History Category**: Virtual category (below `★ Favorites`) listing the last 15–20 watched channels for quick return.
 - **Custom Category Ordering**: Pin favorite categories to the top or reorder visible categories Up/Down.
 - **Backup & Restore Settings**: Export and import hidden categories and favorite channels to easily sync preferences across multiple TV Boxes.
 

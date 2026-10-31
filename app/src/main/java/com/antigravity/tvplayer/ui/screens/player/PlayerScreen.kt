@@ -32,9 +32,8 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
-import com.antigravity.tvplayer.domain.model.Channel
 
-@androidx.annotation.OptIn(UnstableApi::class)
+@OptIn(UnstableApi::class)
 @Composable
 fun PlayerScreen(
     viewModel: PlayerViewModel,
@@ -42,16 +41,21 @@ fun PlayerScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val playerState by viewModel.playerState.collectAsState()
+    val drawerCategories by viewModel.drawerCategories.collectAsState()
+    val drawerSelectedCategoryId by viewModel.drawerSelectedCategoryId.collectAsState()
+    val drawerChannels by viewModel.drawerChannels.collectAsState()
 
     val focusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(uiState.isOverlayVisible) {
-        if (!uiState.isOverlayVisible) {
-            focusRequester.requestFocus()
+    LaunchedEffect(uiState.isOverlayVisible, uiState.isChannelDrawerOpen) {
+        if (!uiState.isChannelDrawerOpen && !uiState.isOverlayVisible) {
+            runCatching { focusRequester.requestFocus() }
+        } else if (!uiState.isChannelDrawerOpen) {
+            runCatching { focusRequester.requestFocus() }
         }
     }
 
-    BackHandler {
+    BackHandler(enabled = !uiState.isChannelDrawerOpen) {
         viewModel.playerManager.stop()
         onBackToLiveTv()
     }
@@ -77,6 +81,11 @@ fun PlayerScreen(
             .fillMaxSize()
             .background(Color.Black)
             .onPreviewKeyEvent { keyEvent ->
+                // When the Quick Channel Drawer is open, let DPAD & OK navigate inside the drawer
+                if (uiState.isChannelDrawerOpen) {
+                    return@onPreviewKeyEvent false
+                }
+
                 if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
                     when (keyEvent.nativeKeyEvent.keyCode) {
                         KeyEvent.KEYCODE_DPAD_UP -> {
@@ -97,6 +106,10 @@ fun PlayerScreen(
                         }
                         KeyEvent.KEYCODE_DPAD_LEFT -> {
                             viewModel.zapLastChannel()
+                            true
+                        }
+                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                            viewModel.openChannelDrawer()
                             true
                         }
                         KeyEvent.KEYCODE_DPAD_CENTER,
@@ -173,27 +186,31 @@ fun PlayerScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Click interceptor for Mouse and Touch on video area (non-focusable so DPAD stays on root)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectTapGestures {
-                        viewModel.toggleOverlay()
+        // Click interceptor for Mouse and Touch on video area (when drawer is closed)
+        if (!uiState.isChannelDrawerOpen) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTapGestures {
+                            viewModel.toggleOverlay()
+                        }
                     }
-                }
-        )
+            )
+        }
 
-        // TV & Mouse Overlay
+        // Floating TV & Mouse Overlay
         PlayerOverlay(
             channel = uiState.currentChannel,
+            displayNumber = uiState.currentChannelDisplayNumber,
             playerState = playerState,
-            isVisible = uiState.isOverlayVisible,
+            isVisible = uiState.isOverlayVisible && !uiState.isChannelDrawerOpen,
             numberBuffer = uiState.numberBuffer,
             onBack = {
                 viewModel.playerManager.stop()
                 onBackToLiveTv()
             },
+            onOpenChannelDrawer = viewModel::openChannelDrawer,
             onZapPrevious = viewModel::zapPrevious,
             onZapNext = viewModel::zapNext,
             onTogglePlayPause = {
@@ -202,6 +219,18 @@ fun PlayerScreen(
             },
             onToggleFavorite = viewModel::toggleCurrentFavorite,
             onRetry = { viewModel.playerManager.retry() }
+        )
+
+        // In-Player Quick Channel Guide Drawer (Live Video Continues Playing Behind)
+        PlayerChannelDrawer(
+            visible = uiState.isChannelDrawerOpen,
+            categories = drawerCategories,
+            selectedCategoryId = drawerSelectedCategoryId,
+            channels = drawerChannels,
+            currentStreamId = uiState.currentChannel?.streamId,
+            onSelectCategory = viewModel::selectDrawerCategory,
+            onSelectChannel = viewModel::playChannelFromDrawer,
+            onClose = viewModel::closeChannelDrawer
         )
     }
 }

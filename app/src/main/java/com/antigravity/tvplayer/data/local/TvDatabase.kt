@@ -6,19 +6,22 @@ import com.antigravity.tvplayer.data.local.dao.AccountDao
 import com.antigravity.tvplayer.data.local.dao.CategoryDao
 import com.antigravity.tvplayer.data.local.dao.ChannelDao
 import com.antigravity.tvplayer.data.local.dao.FavoriteDao
+import com.antigravity.tvplayer.data.local.dao.RecentChannelDao
 import com.antigravity.tvplayer.data.local.entity.AccountEntity
 import com.antigravity.tvplayer.data.local.entity.CategoryEntity
 import com.antigravity.tvplayer.data.local.entity.ChannelEntity
 import com.antigravity.tvplayer.data.local.entity.FavoriteEntity
+import com.antigravity.tvplayer.data.local.entity.RecentChannelEntity
 
 @Database(
     entities = [
         AccountEntity::class,
         CategoryEntity::class,
         ChannelEntity::class,
-        FavoriteEntity::class
+        FavoriteEntity::class,
+        RecentChannelEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class TvDatabase : RoomDatabase() {
@@ -26,4 +29,5 @@ abstract class TvDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun channelDao(): ChannelDao
     abstract fun favoriteDao(): FavoriteDao
+    abstract fun recentChannelDao(): RecentChannelDao
 }

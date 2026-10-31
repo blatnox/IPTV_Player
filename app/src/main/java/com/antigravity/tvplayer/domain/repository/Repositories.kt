@@ -13,6 +13,7 @@ interface ChannelRepository {
     fun searchChannels(accountId: Long, query: String): Flow<List<Channel>>
     fun getChannelByStreamId(accountId: Long, streamId: Int): Flow<Channel?>
     suspend fun getChannelByStreamIdSync(accountId: Long, streamId: Int): Channel?
+    suspend fun recordRecentChannel(accountId: Long, streamId: Int)
     suspend fun refreshData(accountId: Long, serverUrl: String, username: String, password: String): Result<Unit>
     suspend fun hasCachedData(accountId: Long): Boolean
 }

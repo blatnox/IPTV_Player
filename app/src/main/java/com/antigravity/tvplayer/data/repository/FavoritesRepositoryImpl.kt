@@ -4,6 +4,7 @@ import com.antigravity.tvplayer.data.local.dao.FavoriteDao
 import com.antigravity.tvplayer.data.local.entity.ChannelEntity
 import com.antigravity.tvplayer.data.local.entity.FavoriteEntity
 import com.antigravity.tvplayer.domain.model.Channel
+import com.antigravity.tvplayer.domain.model.ChannelNameFormatter
 import com.antigravity.tvplayer.domain.repository.FavoritesRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -57,13 +58,19 @@ class FavoritesRepositoryImpl @Inject constructor(
             favoriteDao.removeFavorite(accountId, streamId)
         }
 
-    private fun ChannelEntity.toDomain() = Channel(
-        streamId = streamId,
-        num = num,
-        name = name,
-        streamIcon = streamIcon,
-        epgChannelId = epgChannelId,
-        categoryId = categoryId,
-        isFavorite = true
-    )
+    private fun ChannelEntity.toDomain(): Channel {
+        val parsed = ChannelNameFormatter.parse(name)
+        return Channel(
+            streamId = streamId,
+            num = num,
+            name = name,
+            streamIcon = streamIcon,
+            epgChannelId = epgChannelId,
+            categoryId = categoryId,
+            isFavorite = true,
+            displayName = parsed.displayName,
+            qualityBadge = parsed.qualityBadge,
+            isSeparator = parsed.isSeparator
+        )
+    }
 }
