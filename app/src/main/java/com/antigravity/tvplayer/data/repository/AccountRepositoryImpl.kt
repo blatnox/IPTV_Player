@@ -142,8 +142,9 @@ class AccountRepositoryImpl @Inject constructor(
             AuthResult.Failure.ServerUnreachable("Connection timed out. Server is unreachable.")
         } catch (e: HttpException) {
             when (e.code()) {
-                401, 403 -> AuthResult.Failure.InvalidCredentials("Access denied (HTTP ${e.code()}).")
+                401, 403, 511, 513 -> AuthResult.Failure.InvalidCredentials("Access denied (HTTP ${e.code()}). Check username and password.")
                 404 -> AuthResult.Failure.InvalidUrl("API not found (HTTP 404). Check server URL.")
+                500, 502, 503, 504 -> AuthResult.Failure.ServerUnreachable("Server error (HTTP ${e.code()}).")
                 else -> AuthResult.Failure.GeneralError("Server returned HTTP error ${e.code()}.")
             }
         } catch (e: IOException) {
