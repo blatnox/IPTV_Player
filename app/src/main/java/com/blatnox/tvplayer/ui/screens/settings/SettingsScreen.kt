@@ -1,9 +1,10 @@
-﻿package com.blatnox.tvplayer.ui.screens.settings
+package com.blatnox.tvplayer.ui.screens.settings
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -565,12 +566,20 @@ fun ActiveAccountCard(account: Account) {
         }
     }
 
+    val cardInteraction = remember { MutableInteractionSource() }
+    val isFocused by cardInteraction.collectIsFocusedAsState()
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(SurfaceDark)
-            .border(1.dp, FocusCyan.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+            .background(if (isFocused) Color(0xFF1F2B3E) else SurfaceDark)
+            .border(
+                width = if (isFocused) 2.dp else 1.dp,
+                color = if (isFocused) FocusCyan else FocusCyan.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .focusable(interactionSource = cardInteraction)
             .padding(18.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -662,12 +671,21 @@ fun ServerMirrorsCard(
         )
 
         // 1. Primary Server Row
-        Column(
+        val primaryInteraction = remember { MutableInteractionSource() }
+        val isPrimaryFocused by primaryInteraction.collectIsFocusedAsState()
+
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
-                .background(SurfaceVariantDark)
-                .padding(10.dp)
+                .background(if (isPrimaryFocused) Color(0xFF1F2B3E) else SurfaceVariantDark)
+                .border(
+                    width = if (isPrimaryFocused) 2.dp else 1.dp,
+                    color = if (isPrimaryFocused) FocusCyan else Color(0xFF232D3F),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .focusable(interactionSource = primaryInteraction)
+                .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -676,14 +694,14 @@ fun ServerMirrorsCard(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.weight(1f)
                 ) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))
                             .background(FocusCyan.copy(alpha = 0.2f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
                         Text(
                             text = "PRIMARY",
@@ -696,7 +714,7 @@ fun ServerMirrorsCard(
                     Text(
                         text = account.serverUrl,
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = TextPrimary,
+                            color = if (isPrimaryFocused) Color.White else TextPrimary,
                             fontWeight = FontWeight.Medium
                         ),
                         maxLines = 1
@@ -730,80 +748,26 @@ fun ServerMirrorsCard(
             )
         } else {
             Column(
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(bottom = 10.dp)
             ) {
                 account.backupServers.forEach { mirrorUrl ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF161E2C))
-                            .border(1.dp, CardBorderSubtle, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = mirrorUrl,
-                                style = MaterialTheme.typography.bodySmall.copy(color = TextPrimary),
-                                maxLines = 1
-                            )
-                            val status = serverStatuses[mirrorUrl]
-                            if (status != null) {
-                                Spacer(modifier = Modifier.height(4.dp))
-                                ServerLatencyPill(status = status)
-                            }
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Button(
-                                onClick = { onPromote(mirrorUrl) },
-                                colors = ButtonDefaults.colors(
-                                    containerColor = SurfaceVariantDark,
-                                    focusedContainerColor = FocusCyan
-                                ),
-                                shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
-                                modifier = Modifier.height(30.dp)
-                            ) {
-                                Text(
-                                    text = "Make Primary",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        color = TextPrimary,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                )
-                            }
-
-                            Surface(
-                                onClick = { onRemove(mirrorUrl) },
-                                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
-                                colors = ClickableSurfaceDefaults.colors(
-                                    containerColor = Color.Transparent,
-                                    focusedContainerColor = ErrorRed
-                                ),
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete mirror",
-                                        tint = TextMuted,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    MirrorItemRow(
+                        mirrorUrl = mirrorUrl,
+                        status = serverStatuses[mirrorUrl],
+                        onPromote = { onPromote(mirrorUrl) },
+                        onRemove = { onRemove(mirrorUrl) }
+                    )
                 }
             }
         }
 
         // 3. Action Buttons: Test & Add
+        val testBtnInteraction = remember { MutableInteractionSource() }
+        val isTestBtnFocused by testBtnInteraction.collectIsFocusedAsState()
+
+        val addBtnInteraction = remember { MutableInteractionSource() }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -816,7 +780,8 @@ fun ServerMirrorsCard(
                     focusedContainerColor = FocusCyan
                 ),
                 shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                interactionSource = testBtnInteraction
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -824,24 +789,29 @@ fun ServerMirrorsCard(
                 ) {
                     if (isTesting) {
                         CircularProgressIndicator(
-                            color = FocusCyan,
+                            color = if (isTestBtnFocused) Color.Black else FocusCyan,
                             strokeWidth = 2.dp,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "Testing…", style = MaterialTheme.typography.labelMedium.copy(color = TextPrimary))
+                        Text(
+                            text = "Testing…",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = if (isTestBtnFocused) Color.Black else TextPrimary
+                            )
+                        )
                     } else {
                         Icon(
                             imageVector = Icons.Default.Speed,
                             contentDescription = null,
-                            tint = FocusCyan,
+                            tint = if (isTestBtnFocused) Color.Black else FocusCyan,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "Test & Pick Fastest",
                             style = MaterialTheme.typography.labelMedium.copy(
-                                color = TextPrimary,
+                                color = if (isTestBtnFocused) Color.Black else TextPrimary,
                                 fontWeight = FontWeight.Bold
                             )
                         )
@@ -856,7 +826,8 @@ fun ServerMirrorsCard(
                     focusedContainerColor = Color.White
                 ),
                 shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                interactionSource = addBtnInteraction
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -889,6 +860,98 @@ fun ServerMirrorsCard(
                     fontWeight = FontWeight.SemiBold
                 )
             )
+        }
+    }
+}
+
+@Composable
+fun MirrorItemRow(
+    mirrorUrl: String,
+    status: ServerStatus?,
+    onPromote: () -> Unit,
+    onRemove: () -> Unit
+) {
+    val rowInteraction = remember { MutableInteractionSource() }
+    val isRowFocused by rowInteraction.collectIsFocusedAsState()
+
+    Card(
+        onClick = onPromote,
+        colors = CardDefaults.colors(
+            containerColor = Color(0xFF161E2C),
+            focusedContainerColor = Color(0xFF1F2B3E)
+        ),
+        shape = CardDefaults.shape(RoundedCornerShape(8.dp)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = if (isRowFocused) 2.dp else 1.dp,
+                color = if (isRowFocused) FocusCyan else CardBorderSubtle,
+                shape = RoundedCornerShape(8.dp)
+            ),
+        interactionSource = rowInteraction
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = mirrorUrl,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = if (isRowFocused) Color.White else TextPrimary,
+                        fontWeight = FontWeight.Medium
+                    ),
+                    maxLines = 1
+                )
+                if (status != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    ServerLatencyPill(status = status)
+                }
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isRowFocused) FocusCyan else SurfaceDark)
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "Make Primary",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = if (isRowFocused) Color.Black else FocusCyan,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+
+                Surface(
+                    onClick = onRemove,
+                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                    colors = ClickableSurfaceDefaults.colors(
+                        containerColor = Color.Transparent,
+                        focusedContainerColor = ErrorRed
+                    ),
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete mirror",
+                            tint = if (isRowFocused) Color.White else TextMuted,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }
