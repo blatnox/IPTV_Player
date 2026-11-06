@@ -1,4 +1,4 @@
-# Native Android TV IPTV Player
+﻿# Native Android TV IPTV Player
 
 A high-performance, native Android TV player built specifically for **Xiaomi TV Box** (Mi Box S / Xiaomi TV Box S, Android TV / Google TV 9–14+) and other Android TV devices. 
 
@@ -41,7 +41,7 @@ Designed strictly as a **player-only application**: the app ships with **no prel
 ## Architecture Overview
 
 ```
-com.antigravity.tvplayer/
+com.blatnox.tvplayer/
 ├── MainActivity.kt               # Single activity hosting TV NavHost & key interceptors
 ├── TvPlayerApplication.kt        # Application class with @HiltAndroidApp
 ├── data/
