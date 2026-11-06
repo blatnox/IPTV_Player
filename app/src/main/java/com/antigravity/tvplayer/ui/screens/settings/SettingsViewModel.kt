@@ -49,6 +49,9 @@ class SettingsViewModel @Inject constructor(
     private val _serverStatuses = MutableStateFlow<Map<String, ServerStatus>>(emptyMap())
     val serverStatuses: StateFlow<Map<String, ServerStatus>> = _serverStatuses.asStateFlow()
 
+    private val _serverTestMessage = MutableStateFlow<String?>(null)
+    val serverTestMessage: StateFlow<String?> = _serverTestMessage.asStateFlow()
+
     private val _isTestingServers = MutableStateFlow(false)
     val isTestingServers: StateFlow<Boolean> = _isTestingServers.asStateFlow()
 
@@ -85,12 +88,13 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun testAllServers() {
+    fun testAndSelectFastestServer() {
         val account = activeAccount.value ?: return
         val allUrls = (listOf(account.serverUrl) + account.backupServers).distinct()
         if (_isTestingServers.value || allUrls.isEmpty()) return
 
         _isTestingServers.value = true
+        _serverTestMessage.value = "Testing latency across all mirrors…"
         viewModelScope.launch {
             val results = mutableMapOf<String, ServerStatus>()
             for (url in allUrls) {
@@ -98,6 +102,21 @@ class SettingsViewModel @Inject constructor(
                 results[url] = status
             }
             _serverStatuses.value = results
+
+            val fastestOnline = results.values
+                .filter { it.isOnline && it.latencyMs > 0 }
+                .minByOrNull { it.latencyMs }
+
+            if (fastestOnline != null) {
+                if (fastestOnline.url != account.serverUrl) {
+                    accountRepository.setPrimaryServer(account.id, fastestOnline.url)
+                    _serverTestMessage.value = "Switched to fastest mirror (${fastestOnline.latencyMs} ms)"
+                } else {
+                    _serverTestMessage.value = "Current Primary is already the fastest mirror (${fastestOnline.latencyMs} ms)"
+                }
+            } else {
+                _serverTestMessage.value = "All mirrors unreachable. Check internet connection."
+            }
             _isTestingServers.value = false
         }
     }

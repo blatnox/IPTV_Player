@@ -98,6 +98,7 @@ fun SettingsScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val refreshStatus by viewModel.refreshStatus.collectAsState()
     val serverStatuses by viewModel.serverStatuses.collectAsState()
+    val serverTestMessage by viewModel.serverTestMessage.collectAsState()
     val isTestingServers by viewModel.isTestingServers.collectAsState()
     var showAddMirrorDialog by remember { mutableStateOf(false) }
 
@@ -411,7 +412,8 @@ fun SettingsScreen(
                                 account = activeAccount!!,
                                 serverStatuses = serverStatuses,
                                 isTesting = isTestingServers,
-                                onTestServers = viewModel::testAllServers,
+                                testMessage = serverTestMessage,
+                                onTestServers = viewModel::testAndSelectFastestServer,
                                 onPromote = viewModel::promoteBackupToPrimary,
                                 onRemove = viewModel::removeBackupServer,
                                 onAddClick = { showAddMirrorDialog = true }
@@ -646,6 +648,7 @@ fun ServerMirrorsCard(
     account: Account,
     serverStatuses: Map<String, ServerStatus>,
     isTesting: Boolean,
+    testMessage: String? = null,
     onTestServers: () -> Unit,
     onPromote: (String) -> Unit,
     onRemove: (String) -> Unit,
@@ -836,7 +839,7 @@ fun ServerMirrorsCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Test All Mirrors",
+                            text = "Test & Pick Fastest",
                             style = MaterialTheme.typography.labelMedium.copy(
                                 color = TextPrimary,
                                 fontWeight = FontWeight.Bold
@@ -875,6 +878,17 @@ fun ServerMirrorsCard(
                     )
                 }
             }
+        }
+
+        if (!testMessage.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = testMessage,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = FocusCyan,
+                    fontWeight = FontWeight.SemiBold
+                )
+            )
         }
     }
 }
