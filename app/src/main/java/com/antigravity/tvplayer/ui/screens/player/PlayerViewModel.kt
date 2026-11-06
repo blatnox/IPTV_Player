@@ -84,11 +84,25 @@ class PlayerViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private var activeAccount: Account? = null
+    private var sessionActiveServerUrl: String? = null
     private var channelList: List<Channel> = emptyList()
     private var overlayHideJob: Job? = null
     private var numberBufferJob: Job? = null
 
     init {
+        playerManager.onStreamSuccess = { successfulUrl ->
+            activeAccount?.let { acc ->
+                val allServers = (listOf(acc.serverUrl) + acc.backupServers).distinct()
+                val matched = allServers.firstOrNull { s ->
+                    val host = try { java.net.URI(s).host } catch (_: Exception) { null }
+                    host != null && successfulUrl.contains(host, ignoreCase = true)
+                }
+                if (matched != null && matched != sessionActiveServerUrl) {
+                    sessionActiveServerUrl = matched
+                }
+            }
+        }
+
         val initialStreamId: Int = savedStateHandle.get<String>("streamId")?.toIntOrNull() ?: 0
 
         viewModelScope.launch {
@@ -157,25 +171,45 @@ class PlayerViewModel @Inject constructor(
         }
 
         val format = _uiState.value.preferredFormat
-        val primaryUrl = XtreamUrlBuilder.buildStreamUrl(
-            serverUrl = account.serverUrl,
-            username = account.username,
-            password = account.password,
-            streamId = channel.streamId,
-            format = format
-        )
+        val fallbackFormat = if (format == StreamFormat.M3U8) StreamFormat.TS else StreamFormat.M3U8
 
-        playerManager.play(primaryUrl) { failedUrl ->
-            val fallbackFormat = if (failedUrl.endsWith(".m3u8", ignoreCase = true)) StreamFormat.TS else StreamFormat.M3U8
-            XtreamUrlBuilder.buildStreamUrl(
-                serverUrl = account.serverUrl,
-                username = account.username,
-                password = account.password,
-                streamId = channel.streamId,
-                format = fallbackFormat
+        // Order servers: previously working session server first, then primary, then configured backup mirrors
+        val orderedServers = mutableListOf<String>()
+        val workingServer = sessionActiveServerUrl
+        if (!workingServer.isNullOrBlank()) {
+            orderedServers.add(workingServer)
+        }
+        orderedServers.add(account.serverUrl)
+        orderedServers.addAll(account.backupServers)
+
+        val uniqueServers = orderedServers
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+
+        val candidates = mutableListOf<String>()
+        for (server in uniqueServers) {
+            candidates.add(
+                XtreamUrlBuilder.buildStreamUrl(
+                    serverUrl = server,
+                    username = account.username,
+                    password = account.password,
+                    streamId = channel.streamId,
+                    format = format
+                )
+            )
+            candidates.add(
+                XtreamUrlBuilder.buildStreamUrl(
+                    serverUrl = server,
+                    username = account.username,
+                    password = account.password,
+                    streamId = channel.streamId,
+                    format = fallbackFormat
+                )
             )
         }
 
+        playerManager.play(candidates)
         showOverlay()
     }
 
@@ -315,6 +349,7 @@ class PlayerViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        playerManager.onStreamSuccess = null
         playerManager.stop()
         playerManager.release()
     }

@@ -10,6 +10,8 @@ data class PlayerUiState(
     val errorMessage: String? = null,
     val currentStreamUrl: String = "",
     val isUsingFallback: Boolean = false,
+    val isUsingBackupServer: Boolean = false,
+    val activeServerHost: String = "",
     val videoWidth: Int = 0,
     val videoHeight: Int = 0
 )

@@ -45,10 +45,11 @@ class PlayerManager @Inject constructor(
     private var stallWatchdogJob: Job? = null
 
     private var primaryStreamUrl: String = ""
-    private var fallbackUrlProvider: ((String) -> String)? = null
-    private var hasAttemptedFallback = false
-    private var retryCount = 0
-    private val maxAutoRetries = 3
+    private var streamCandidates: List<String> = emptyList()
+    private var candidateIndex = 0
+    private var retryCountOnCandidate = 0
+    private val maxRetriesPerCandidate = 2
+    var onStreamSuccess: ((successfulUrl: String) -> Unit)? = null
 
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -59,12 +60,20 @@ class PlayerManager @Inject constructor(
                 }
                 Player.STATE_READY -> {
                     cancelWatchdogAndReconnect()
-                    retryCount = 0
+                    retryCountOnCandidate = 0
+                    val currentUrl = _uiState.value.currentStreamUrl.ifEmpty { primaryStreamUrl }
+                    if (currentUrl.isNotEmpty()) {
+                        onStreamSuccess?.invoke(currentUrl)
+                    }
+                    val isBackup = candidateIndex > 0
+                    val host = extractHost(currentUrl)
                     _uiState.update {
                         it.copy(
                             isBuffering = false,
                             retryAttempt = 0,
                             isPlaying = exoPlayer?.isPlaying == true,
+                            isUsingBackupServer = isBackup,
+                            activeServerHost = host,
                             errorMessage = null
                         )
                     }
@@ -115,38 +124,56 @@ class PlayerManager @Inject constructor(
 
             val currentUrl = _uiState.value.currentStreamUrl.ifEmpty { primaryStreamUrl }
 
-            // Auto-reconnect up to maxAutoRetries (3 attempts) with short backoff
-            if (retryCount < maxAutoRetries && currentUrl.isNotEmpty()) {
-                retryCount++
-                val nextUrl = if (!hasAttemptedFallback && retryCount >= 2 && fallbackUrlProvider != null) {
-                    val fb = fallbackUrlProvider?.invoke(primaryStreamUrl)
-                    if (!fb.isNullOrEmpty() && fb != currentUrl) {
-                        hasAttemptedFallback = true
-                        fb
-                    } else {
-                        currentUrl
-                    }
-                } else {
-                    currentUrl
-                }
-
-                val backoffMs = retryCount * 1200L
+            // 1. Retry current candidate if attempts remain (up to 2 retries)
+            if (retryCountOnCandidate < maxRetriesPerCandidate && currentUrl.isNotEmpty()) {
+                retryCountOnCandidate++
+                val backoffMs = retryCountOnCandidate * 1000L
                 _uiState.update {
                     it.copy(
-                        currentStreamUrl = nextUrl,
-                        isUsingFallback = hasAttemptedFallback,
                         isBuffering = true,
-                        retryAttempt = retryCount,
+                        retryAttempt = retryCountOnCandidate,
                         errorMessage = null
                     )
                 }
                 reconnectJob = scope.launch {
                     delay(backoffMs)
+                    playInternal(currentUrl)
+                }
+                return
+            }
+
+            // 2. Failover to next candidate URL (alternate format or backup server)
+            if (candidateIndex + 1 < streamCandidates.size) {
+                candidateIndex++
+                retryCountOnCandidate = 0
+                val nextUrl = streamCandidates[candidateIndex]
+                val isBackup = candidateIndex > 0
+                val host = extractHost(nextUrl)
+                val msg = if (isBackup) {
+                    "Switching to backup mirror (${candidateIndex + 1}/${streamCandidates.size})…"
+                } else {
+                    "Trying stream fallback…"
+                }
+
+                _uiState.update {
+                    it.copy(
+                        currentStreamUrl = nextUrl,
+                        isUsingFallback = nextUrl.endsWith(".ts", ignoreCase = true),
+                        isUsingBackupServer = isBackup,
+                        activeServerHost = host,
+                        isBuffering = true,
+                        retryAttempt = candidateIndex + 1,
+                        errorMessage = msg
+                    )
+                }
+                reconnectJob = scope.launch {
+                    delay(600L)
                     playInternal(nextUrl)
                 }
                 return
             }
 
+            // 3. All candidates exhausted
             val friendlyMsg = when (error.errorCode) {
                 PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> "Server returned HTTP stream error"
                 PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> "Stream connection failed"
@@ -159,7 +186,7 @@ class PlayerManager @Inject constructor(
                     isBuffering = false,
                     isPlaying = false,
                     retryAttempt = 0,
-                    errorMessage = friendlyMsg
+                    errorMessage = if (streamCandidates.size > 1) "All servers/mirrors failed: $friendlyMsg" else friendlyMsg
                 )
             }
         }
@@ -169,12 +196,28 @@ class PlayerManager @Inject constructor(
         stallWatchdogJob?.cancel()
         stallWatchdogJob = scope.launch {
             delay(12_000L)
-            // If still stuck buffering after 12 seconds, trigger auto-reconnect
+            // If still stuck buffering after 12 seconds, trigger failover
             if (_uiState.value.isBuffering && exoPlayer?.playbackState == Player.STATE_BUFFERING) {
-                val activeUrl = _uiState.value.currentStreamUrl.ifEmpty { primaryStreamUrl }
-                if (activeUrl.isNotEmpty() && retryCount < maxAutoRetries) {
-                    retryCount++
-                    _uiState.update { it.copy(retryAttempt = retryCount, errorMessage = null) }
+                if (candidateIndex + 1 < streamCandidates.size) {
+                    candidateIndex++
+                    retryCountOnCandidate = 0
+                    val nextUrl = streamCandidates[candidateIndex]
+                    val isBackup = candidateIndex > 0
+                    val host = extractHost(nextUrl)
+                    _uiState.update {
+                        it.copy(
+                            currentStreamUrl = nextUrl,
+                            isUsingFallback = nextUrl.endsWith(".ts", ignoreCase = true),
+                            isUsingBackupServer = isBackup,
+                            activeServerHost = host,
+                            retryAttempt = candidateIndex + 1,
+                            errorMessage = "Buffering stalled. Switching server…"
+                        )
+                    }
+                    playInternal(nextUrl)
+                } else if (retryCountOnCandidate < maxRetriesPerCandidate) {
+                    retryCountOnCandidate++
+                    val activeUrl = _uiState.value.currentStreamUrl.ifEmpty { primaryStreamUrl }
                     playInternal(activeUrl)
                 }
             }
@@ -230,28 +273,59 @@ class PlayerManager @Inject constructor(
         return player
     }
 
-    fun play(url: String, fallbackProvider: ((String) -> String)? = null) {
+    fun play(candidates: List<String>) {
         cancelWatchdogAndReconnect()
-        primaryStreamUrl = url
-        retryCount = 0
-        hasAttemptedFallback = false
-        fallbackUrlProvider = fallbackProvider
+        streamCandidates = candidates.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+        if (streamCandidates.isEmpty()) return
+
+        candidateIndex = 0
+        retryCountOnCandidate = 0
+        val firstUrl = streamCandidates.first()
+        primaryStreamUrl = firstUrl
+
+        val isBackup = candidateIndex > 0
+        val host = extractHost(firstUrl)
+
         _uiState.update {
             it.copy(
-                currentStreamUrl = url,
-                isUsingFallback = false,
+                currentStreamUrl = firstUrl,
+                isUsingFallback = firstUrl.endsWith(".ts", ignoreCase = true),
+                isUsingBackupServer = isBackup,
+                activeServerHost = host,
                 isBuffering = true,
                 retryAttempt = 0,
                 errorMessage = null
             )
         }
-        playInternal(url)
+        playInternal(firstUrl)
+    }
+
+    fun play(url: String, fallbackProvider: ((String) -> String)? = null) {
+        val candidates = mutableListOf(url)
+        val fb = fallbackProvider?.invoke(url)
+        if (!fb.isNullOrBlank() && fb != url) {
+            candidates.add(fb)
+        }
+        play(candidates)
     }
 
     fun retry() {
-        val url = primaryStreamUrl.ifEmpty { _uiState.value.currentStreamUrl }
-        if (url.isNotEmpty()) {
-            play(url, fallbackUrlProvider)
+        if (streamCandidates.isNotEmpty()) {
+            play(streamCandidates)
+        } else {
+            val url = primaryStreamUrl.ifEmpty { _uiState.value.currentStreamUrl }
+            if (url.isNotEmpty()) {
+                play(listOf(url))
+            }
+        }
+    }
+
+    private fun extractHost(url: String): String {
+        return try {
+            val uri = java.net.URI(url)
+            uri.host ?: ""
+        } catch (_: Exception) {
+            ""
         }
     }
 

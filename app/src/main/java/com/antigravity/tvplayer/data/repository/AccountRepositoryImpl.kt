@@ -8,8 +8,11 @@ import com.antigravity.tvplayer.data.security.SecureCredentialStore
 import com.antigravity.tvplayer.domain.model.Account
 import com.antigravity.tvplayer.domain.repository.AccountRepository
 import com.antigravity.tvplayer.domain.repository.AuthResult
+import com.antigravity.tvplayer.domain.repository.ServerStatus
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import java.io.IOException
 import java.net.ConnectException
@@ -178,19 +181,83 @@ class AccountRepositoryImpl @Inject constructor(
         return login(account.serverUrl, account.username, password)
     }
 
+    override suspend fun updateBackupServers(accountId: Long, backupServers: List<String>) {
+        val serialized = backupServers.map { XtreamUrlBuilder.normalizeServerUrl(it) }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .joinToString("|")
+        accountDao.updateBackupServers(accountId, serialized)
+    }
+
+    override suspend fun setPrimaryServer(accountId: Long, newPrimaryServerUrl: String) {
+        val normalized = XtreamUrlBuilder.normalizeServerUrl(newPrimaryServerUrl)
+        if (normalized.isNotBlank()) {
+            val account = accountDao.getAccountById(accountId) ?: return
+            val currentBackups = account.backupServers.split('|', ',', '\n')
+                .map { XtreamUrlBuilder.normalizeServerUrl(it) }
+                .filter { it.isNotBlank() && it != normalized }
+            val oldPrimary = XtreamUrlBuilder.normalizeServerUrl(account.serverUrl)
+            val updatedBackups = if (oldPrimary.isNotBlank() && oldPrimary != normalized) {
+                (listOf(oldPrimary) + currentBackups).distinct()
+            } else {
+                currentBackups.distinct()
+            }
+            accountDao.updatePrimaryServer(accountId, normalized)
+            accountDao.updateBackupServers(accountId, updatedBackups.joinToString("|"))
+        }
+    }
+
+    override suspend fun testServerLatency(serverUrl: String): ServerStatus = withContext(Dispatchers.IO) {
+        val normalized = XtreamUrlBuilder.normalizeServerUrl(serverUrl)
+        if (normalized.isBlank()) {
+            return@withContext ServerStatus(url = serverUrl, isOnline = false, latencyMs = 0, message = "Invalid URL")
+        }
+        val startTime = System.currentTimeMillis()
+        try {
+            val uri = java.net.URI(normalized)
+            val host = uri.host ?: normalized
+            val port = if (uri.port > 0) uri.port else 80
+
+            val socket = java.net.Socket()
+            socket.connect(java.net.InetSocketAddress(host, port), 2500)
+            socket.close()
+            val latency = (System.currentTimeMillis() - startTime).coerceAtLeast(1L)
+            ServerStatus(
+                url = normalized,
+                isOnline = true,
+                latencyMs = latency,
+                message = "Online (${latency}ms)"
+            )
+        } catch (e: Exception) {
+            ServerStatus(
+                url = normalized,
+                isOnline = false,
+                latencyMs = (System.currentTimeMillis() - startTime),
+                message = e.localizedMessage ?: "Unreachable"
+            )
+        }
+    }
+
     private fun credentialKey(id: Long) = "acc_pwd_$id"
 
-    private fun AccountEntity.toDomain(password: String): Account = Account(
-        id = id,
-        serverUrl = serverUrl,
-        username = username,
-        password = password,
-        serverName = serverName,
-        status = status,
-        expDate = expDate,
-        maxConnections = maxConnections,
-        activeConnections = activeConnections,
-        isActive = isActive,
-        lastLoginAt = lastLoginAt
-    )
+    private fun AccountEntity.toDomain(password: String): Account {
+        val backups = backupServers.split('|', ',', '\n')
+            .map { XtreamUrlBuilder.normalizeServerUrl(it) }
+            .filter { it.isNotBlank() }
+            .distinct()
+        return Account(
+            id = id,
+            serverUrl = serverUrl,
+            username = username,
+            password = password,
+            serverName = serverName,
+            status = status,
+            expDate = expDate,
+            maxConnections = maxConnections,
+            activeConnections = activeConnections,
+            isActive = isActive,
+            lastLoginAt = lastLoginAt,
+            backupServers = backups
+        )
+    }
 }

@@ -175,6 +175,7 @@ fun PlayerOverlay(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = when {
+                            playerState.isUsingBackupServer -> "Connecting to backup mirror (${playerState.activeServerHost.ifEmpty { "mirror" }})…"
                             playerState.retryAttempt > 0 -> "Reconnecting (${playerState.retryAttempt}/3)…"
                             playerState.isUsingFallback -> "Connecting via fallback…"
                             else -> "Buffering…"
@@ -402,7 +403,10 @@ fun PlayerOverlay(
                                     }
                                     StreamBadge(text = resLabel)
                                 }
-                                if (playerState.isUsingFallback) {
+                                if (playerState.isUsingBackupServer) {
+                                    val mirrorText = if (playerState.activeServerHost.isNotEmpty()) "Mirror: ${playerState.activeServerHost}" else "Mirror"
+                                    StreamBadge(text = mirrorText, color = FocusCyan)
+                                } else if (playerState.isUsingFallback) {
                                     StreamBadge(text = "Fallback", color = Color(0xFFFF9800))
                                 }
 

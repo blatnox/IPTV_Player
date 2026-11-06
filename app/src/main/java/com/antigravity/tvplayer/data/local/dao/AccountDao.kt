@@ -34,6 +34,12 @@ interface AccountDao {
     @Update
     suspend fun updateAccount(account: AccountEntity)
 
+    @Query("UPDATE accounts SET backup_servers = :backupServers WHERE id = :id")
+    suspend fun updateBackupServers(id: Long, backupServers: String)
+
+    @Query("UPDATE accounts SET serverUrl = :serverUrl WHERE id = :id")
+    suspend fun updatePrimaryServer(id: Long, serverUrl: String)
+
     @Delete
     suspend fun deleteAccount(account: AccountEntity)
 

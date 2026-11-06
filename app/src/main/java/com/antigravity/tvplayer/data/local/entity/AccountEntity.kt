@@ -1,5 +1,6 @@
 package com.antigravity.tvplayer.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -15,5 +16,7 @@ data class AccountEntity(
     val maxConnections: String? = null,
     val activeConnections: String? = null,
     val isActive: Boolean = false,
-    val lastLoginAt: Long = System.currentTimeMillis()
+    val lastLoginAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(name = "backup_servers", defaultValue = "")
+    val backupServers: String = ""
 )

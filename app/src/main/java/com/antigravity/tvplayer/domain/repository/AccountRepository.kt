@@ -15,6 +15,14 @@ sealed class AuthResult {
     }
 }
 
+data class ServerStatus(
+    val url: String,
+    val isOnline: Boolean,
+    val latencyMs: Long,
+    val httpCode: Int = 0,
+    val message: String = ""
+)
+
 interface AccountRepository {
     fun getActiveAccount(): Flow<Account?>
     fun getAllAccounts(): Flow<List<Account>>
@@ -23,4 +31,7 @@ interface AccountRepository {
     suspend fun switchAccount(accountId: Long)
     suspend fun deleteAccount(accountId: Long)
     suspend fun refreshAccountInfo(accountId: Long): AuthResult
+    suspend fun updateBackupServers(accountId: Long, backupServers: List<String>)
+    suspend fun setPrimaryServer(accountId: Long, newPrimaryServerUrl: String)
+    suspend fun testServerLatency(serverUrl: String): ServerStatus
 }

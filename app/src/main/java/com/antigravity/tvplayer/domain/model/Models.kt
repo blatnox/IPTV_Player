@@ -14,7 +14,8 @@ data class Account(
     val maxConnections: String? = null,
     val activeConnections: String? = null,
     val isActive: Boolean = false,
-    val lastLoginAt: Long = 0L
+    val lastLoginAt: Long = 0L,
+    val backupServers: List<String> = emptyList()
 )
 
 @Immutable

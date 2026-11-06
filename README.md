@@ -23,7 +23,8 @@ Designed strictly as a **player-only application**: the app ships with **no prel
 - **Full-Featured TV Playback**:
   - AndroidX Media3 (ExoPlayer) with hardware-accelerated HLS (`.m3u8`) and MPEG-TS (`.ts`) decoding.
   - **In-Player Quick Channel Drawer**: Press **D-pad Right (`▶`)** or click **Channels** in the floating player bar to browse categories and channels in a translucent overlay while live video keeps playing uninterrupted.
-  - **Auto-Reconnect & Stream Fallback**: Automatically reconnects on live stream `EOS`/resolution switches, recovers from live window drift, retries up to 3 times with backoff and `.m3u8` ↔ `.ts` fallback on network drops or stalls, and includes a manual **Retry Stream (OK)** button.
+  - **Auto-Reconnect, Multi-Server Failover & Stream Fallback**: Automatically reconnects on live stream `EOS`/resolution switches, recovers from live window drift, retries with backoff across all configured **Backup Mirror Servers** and `.m3u8` ↔ `.ts` formats on network drops or 502/server errors, remembers working session mirrors, and includes a manual **Retry Stream (OK)** button.
+  - **Server Mirrors & Latency Testing in Settings**: Manage multiple backup mirror URLs per account, test real-time latencies across all servers with one click, and promote any backup mirror to Primary instantly.
   - Immediate stream socket release on Back/Home/Power off so 1-connection IPTV accounts are never locked out when switching between TV Boxes.
   - Screen wake lock (`FLAG_KEEP_SCREEN_ON`) so the Android TV screensaver never interrupts live playback.
   - Quick channel zapping with D-pad Up/Down or remote Channel +/- keys (automatically skipping non-playable section dividers).

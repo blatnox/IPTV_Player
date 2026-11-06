@@ -2,11 +2,13 @@ package com.antigravity.tvplayer.ui.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.antigravity.tvplayer.data.api.XtreamUrlBuilder
 import com.antigravity.tvplayer.data.settings.SettingsDataStore
 import com.antigravity.tvplayer.domain.model.Account
 import com.antigravity.tvplayer.domain.model.StreamFormat
 import com.antigravity.tvplayer.domain.repository.AccountRepository
 import com.antigravity.tvplayer.domain.repository.ChannelRepository
+import com.antigravity.tvplayer.domain.repository.ServerStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -43,6 +45,62 @@ class SettingsViewModel @Inject constructor(
 
     private val _refreshStatus = MutableStateFlow<String?>(null)
     val refreshStatus: StateFlow<String?> = _refreshStatus.asStateFlow()
+
+    private val _serverStatuses = MutableStateFlow<Map<String, ServerStatus>>(emptyMap())
+    val serverStatuses: StateFlow<Map<String, ServerStatus>> = _serverStatuses.asStateFlow()
+
+    private val _isTestingServers = MutableStateFlow(false)
+    val isTestingServers: StateFlow<Boolean> = _isTestingServers.asStateFlow()
+
+    fun updatePrimaryServer(newServerUrl: String) {
+        val account = activeAccount.value ?: return
+        viewModelScope.launch {
+            accountRepository.setPrimaryServer(account.id, newServerUrl)
+        }
+    }
+
+    fun addBackupServer(url: String) {
+        val account = activeAccount.value ?: return
+        val current = account.backupServers
+        val normalized = XtreamUrlBuilder.normalizeServerUrl(url)
+        if (normalized.isNotBlank() && !current.contains(normalized) && normalized != account.serverUrl) {
+            viewModelScope.launch {
+                accountRepository.updateBackupServers(account.id, current + normalized)
+            }
+        }
+    }
+
+    fun removeBackupServer(url: String) {
+        val account = activeAccount.value ?: return
+        val current = account.backupServers
+        viewModelScope.launch {
+            accountRepository.updateBackupServers(account.id, current.filter { it != url })
+        }
+    }
+
+    fun promoteBackupToPrimary(backupUrl: String) {
+        val account = activeAccount.value ?: return
+        viewModelScope.launch {
+            accountRepository.setPrimaryServer(account.id, backupUrl)
+        }
+    }
+
+    fun testAllServers() {
+        val account = activeAccount.value ?: return
+        val allUrls = (listOf(account.serverUrl) + account.backupServers).distinct()
+        if (_isTestingServers.value || allUrls.isEmpty()) return
+
+        _isTestingServers.value = true
+        viewModelScope.launch {
+            val results = mutableMapOf<String, ServerStatus>()
+            for (url in allUrls) {
+                val status = accountRepository.testServerLatency(url)
+                results[url] = status
+            }
+            _serverStatuses.value = results
+            _isTestingServers.value = false
+        }
+    }
 
     fun setStreamFormat(format: StreamFormat) {
         viewModelScope.launch {

@@ -20,27 +20,43 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Card
@@ -51,10 +67,13 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.antigravity.tvplayer.domain.model.Account
 import com.antigravity.tvplayer.domain.model.StreamFormat
+import com.antigravity.tvplayer.domain.repository.ServerStatus
 import com.antigravity.tvplayer.ui.screens.login.InfoRow
+import com.antigravity.tvplayer.ui.theme.CardBorderSubtle
 import com.antigravity.tvplayer.ui.theme.DarkBackground
 import com.antigravity.tvplayer.ui.theme.ErrorRed
 import com.antigravity.tvplayer.ui.theme.FocusCyan
+import com.antigravity.tvplayer.ui.theme.SuccessGreen
 import com.antigravity.tvplayer.ui.theme.SurfaceDark
 import com.antigravity.tvplayer.ui.theme.SurfaceVariantDark
 import com.antigravity.tvplayer.ui.theme.TextMuted
@@ -78,6 +97,9 @@ fun SettingsScreen(
     val userAgent by viewModel.customUserAgent.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val refreshStatus by viewModel.refreshStatus.collectAsState()
+    val serverStatuses by viewModel.serverStatuses.collectAsState()
+    val isTestingServers by viewModel.isTestingServers.collectAsState()
+    var showAddMirrorDialog by remember { mutableStateOf(false) }
 
     BackHandler {
         onBack()
@@ -384,6 +406,17 @@ fun SettingsScreen(
                         item {
                             ActiveAccountCard(account = activeAccount!!)
                         }
+                        item {
+                            ServerMirrorsCard(
+                                account = activeAccount!!,
+                                serverStatuses = serverStatuses,
+                                isTesting = isTestingServers,
+                                onTestServers = viewModel::testAllServers,
+                                onPromote = viewModel::promoteBackupToPrimary,
+                                onRemove = viewModel::removeBackupServer,
+                                onAddClick = { showAddMirrorDialog = true }
+                            )
+                        }
                     }
 
                     item {
@@ -429,6 +462,16 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
+
+        if (showAddMirrorDialog) {
+            AddMirrorDialog(
+                onDismiss = { showAddMirrorDialog = false },
+                onConfirm = { url ->
+                    viewModel.addBackupServer(url)
+                    showAddMirrorDialog = false
+                }
+            )
         }
     }
 }
@@ -596,4 +639,346 @@ fun AccountManagementRow(
             }
         }
     }
+}
+
+@Composable
+fun ServerMirrorsCard(
+    account: Account,
+    serverStatuses: Map<String, ServerStatus>,
+    isTesting: Boolean,
+    onTestServers: () -> Unit,
+    onPromote: (String) -> Unit,
+    onRemove: (String) -> Unit,
+    onAddClick: () -> Unit
+) {
+    SettingsCard(title = "Server Mirrors & Failover") {
+        Text(
+            text = "If playback drops (e.g. 502/timeout), the player automatically retries across configured backup mirrors.",
+            style = MaterialTheme.typography.bodySmall.copy(color = TextMuted),
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        // 1. Primary Server Row
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(SurfaceVariantDark)
+                .padding(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(FocusCyan.copy(alpha = 0.2f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "PRIMARY",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = FocusCyan,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                    Text(
+                        text = account.serverUrl,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        maxLines = 1
+                    )
+                }
+
+                val primaryStatus = serverStatuses[account.serverUrl]
+                if (primaryStatus != null) {
+                    ServerLatencyPill(status = primaryStatus)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 2. Backup Mirrors
+        Text(
+            text = "Backup Mirrors (${account.backupServers.size})",
+            style = MaterialTheme.typography.labelMedium.copy(
+                color = TextSecondary,
+                fontWeight = FontWeight.SemiBold
+            ),
+            modifier = Modifier.padding(bottom = 6.dp)
+        )
+
+        if (account.backupServers.isEmpty()) {
+            Text(
+                text = "No backup mirrors added. Add backup URLs provided by your service for seamless stream recovery.",
+                style = MaterialTheme.typography.bodySmall.copy(color = TextMuted),
+                modifier = Modifier.padding(bottom = 10.dp)
+            )
+        } else {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(bottom = 10.dp)
+            ) {
+                account.backupServers.forEach { mirrorUrl ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF161E2C))
+                            .border(1.dp, CardBorderSubtle, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = mirrorUrl,
+                                style = MaterialTheme.typography.bodySmall.copy(color = TextPrimary),
+                                maxLines = 1
+                            )
+                            val status = serverStatuses[mirrorUrl]
+                            if (status != null) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                ServerLatencyPill(status = status)
+                            }
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { onPromote(mirrorUrl) },
+                                colors = ButtonDefaults.colors(
+                                    containerColor = SurfaceVariantDark,
+                                    focusedContainerColor = FocusCyan
+                                ),
+                                shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                                modifier = Modifier.height(30.dp)
+                            ) {
+                                Text(
+                                    text = "Make Primary",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = TextPrimary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                            }
+
+                            Surface(
+                                onClick = { onRemove(mirrorUrl) },
+                                shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
+                                colors = ClickableSurfaceDefaults.colors(
+                                    containerColor = Color.Transparent,
+                                    focusedContainerColor = ErrorRed
+                                ),
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete mirror",
+                                        tint = TextMuted,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Action Buttons: Test & Add
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Button(
+                onClick = onTestServers,
+                enabled = !isTesting,
+                colors = ButtonDefaults.colors(
+                    containerColor = SurfaceVariantDark,
+                    focusedContainerColor = FocusCyan
+                ),
+                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    if (isTesting) {
+                        CircularProgressIndicator(
+                            color = FocusCyan,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Testing…", style = MaterialTheme.typography.labelMedium.copy(color = TextPrimary))
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Speed,
+                            contentDescription = null,
+                            tint = FocusCyan,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Test All Mirrors",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = TextPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                }
+            }
+
+            Button(
+                onClick = onAddClick,
+                colors = ButtonDefaults.colors(
+                    containerColor = FocusCyan,
+                    focusedContainerColor = Color.White
+                ),
+                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Add Mirror",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ServerLatencyPill(status: ServerStatus) {
+    val (bg, textColor) = if (status.isOnline) {
+        Pair(SuccessGreen.copy(alpha = 0.18f), SuccessGreen)
+    } else {
+        Pair(ErrorRed.copy(alpha = 0.18f), ErrorRed)
+    }
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(bg)
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = if (status.isOnline) "${status.latencyMs} ms" else "Offline",
+            style = MaterialTheme.typography.labelSmall.copy(
+                color = textColor,
+                fontWeight = FontWeight.SemiBold
+            )
+        )
+    }
+}
+
+@Composable
+fun AddMirrorDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var textVal by remember { mutableStateOf("http://") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Add Backup Mirror URL",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = "Enter an alternative server provided by your IPTV service (e.g. http://pro.uhd8.top):",
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary),
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(SurfaceVariantDark)
+                        .border(1.dp, FocusCyan, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                ) {
+                    BasicTextField(
+                        value = textVal,
+                        onValueChange = { textVal = it },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Uri,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                if (textVal.isNotBlank() && textVal != "http://") {
+                                    onConfirm(textVal.trim())
+                                }
+                            }
+                        ),
+                        textStyle = TextStyle(
+                            color = TextPrimary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        cursorBrush = SolidColor(FocusCyan),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (textVal.isNotBlank() && textVal != "http://") {
+                        onConfirm(textVal.trim())
+                    }
+                }
+            ) {
+                Text(text = "Add Mirror", color = FocusCyan, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "Cancel", color = TextSecondary)
+            }
+        },
+        containerColor = SurfaceDark,
+        shape = RoundedCornerShape(12.dp)
+    )
 }
