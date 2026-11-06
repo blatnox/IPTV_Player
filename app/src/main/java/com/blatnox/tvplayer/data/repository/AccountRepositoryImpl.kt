@@ -1,4 +1,4 @@
-﻿package com.blatnox.tvplayer.data.repository
+package com.blatnox.tvplayer.data.repository
 
 import com.blatnox.tvplayer.data.api.XtreamApiService
 import com.blatnox.tvplayer.data.api.XtreamUrlBuilder
@@ -30,7 +30,25 @@ class AccountRepositoryImpl @Inject constructor(
 
     override fun getActiveAccount(): Flow<Account?> {
         return accountDao.getActiveAccount().map { entity ->
-            entity?.toDomain(credentialStore.getPassword(credentialKey(entity.id)) ?: "")
+            if (entity != null && (entity.serverUrl.contains("185.245.2.107") || entity.serverUrl.contains("candycloud"))) {
+                val newPrimary = "http://vip.wd.prouhd.top"
+                val mirrors = listOf(
+                    "http://pro.candy-c.top",
+                    "http://pro.vpn8k.top",
+                    "http://vip.wd.candy-c.top",
+                    "http://pro.prouhd.top",
+                    "http://pro.uhd8.top",
+                    "http://vip.wd.vpn8k.top",
+                    "http://vip.wd.uhd8.top"
+                ).joinToString("|")
+                accountDao.updatePrimaryServer(entity.id, newPrimary)
+                accountDao.updateBackupServers(entity.id, mirrors)
+                val updated = entity.copy(serverUrl = newPrimary, backupServers = mirrors)
+                val pwd = credentialStore.getPassword(credentialKey(updated.id)) ?: ""
+                updated.toDomain(pwd)
+            } else {
+                entity?.toDomain(credentialStore.getPassword(credentialKey(entity.id)) ?: "")
+            }
         }
     }
 
@@ -44,6 +62,23 @@ class AccountRepositoryImpl @Inject constructor(
 
     override suspend fun getActiveAccountSync(): Account? {
         val entity = accountDao.getActiveAccountSync() ?: return null
+        if (entity.serverUrl.contains("185.245.2.107") || entity.serverUrl.contains("candycloud")) {
+            val newPrimary = "http://vip.wd.prouhd.top"
+            val mirrors = listOf(
+                "http://pro.candy-c.top",
+                "http://pro.vpn8k.top",
+                "http://vip.wd.candy-c.top",
+                "http://pro.prouhd.top",
+                "http://pro.uhd8.top",
+                "http://vip.wd.vpn8k.top",
+                "http://vip.wd.uhd8.top"
+            ).joinToString("|")
+            accountDao.updatePrimaryServer(entity.id, newPrimary)
+            accountDao.updateBackupServers(entity.id, mirrors)
+            val updated = entity.copy(serverUrl = newPrimary, backupServers = mirrors)
+            val pwd = credentialStore.getPassword(credentialKey(updated.id)) ?: ""
+            return updated.toDomain(pwd)
+        }
         val pwd = credentialStore.getPassword(credentialKey(entity.id)) ?: ""
         return entity.toDomain(pwd)
     }
@@ -91,7 +126,22 @@ class AccountRepositoryImpl @Inject constructor(
                 ?: response.serverInfo?.timezone
                 ?: normalizedUrl
 
+            val defaultKnownMirrors = listOf(
+                "http://vip.wd.prouhd.top",
+                "http://pro.candy-c.top",
+                "http://pro.vpn8k.top",
+                "http://vip.wd.candy-c.top",
+                "http://pro.prouhd.top",
+                "http://pro.uhd8.top",
+                "http://vip.wd.vpn8k.top",
+                "http://vip.wd.uhd8.top"
+            )
+            val matchedCluster = if (defaultKnownMirrors.any { it.equals(normalizedUrl, ignoreCase = true) }) {
+                defaultKnownMirrors.filter { !it.equals(normalizedUrl, ignoreCase = true) }.joinToString("|")
+            } else ""
+
             val accountId: Long = if (existing != null) {
+                val updatedBackups = existing.backupServers.ifBlank { matchedCluster }
                 val updated = existing.copy(
                     serverName = serverName,
                     status = userInfo.status ?: "Active",
@@ -99,7 +149,8 @@ class AccountRepositoryImpl @Inject constructor(
                     maxConnections = userInfo.maxConnections,
                     activeConnections = userInfo.activeCons,
                     isActive = true,
-                    lastLoginAt = System.currentTimeMillis()
+                    lastLoginAt = System.currentTimeMillis(),
+                    backupServers = updatedBackups
                 )
                 accountDao.updateAccount(updated)
                 existing.id
@@ -113,7 +164,8 @@ class AccountRepositoryImpl @Inject constructor(
                     maxConnections = userInfo.maxConnections,
                     activeConnections = userInfo.activeCons,
                     isActive = true,
-                    lastLoginAt = System.currentTimeMillis()
+                    lastLoginAt = System.currentTimeMillis(),
+                    backupServers = matchedCluster
                 )
                 accountDao.insertAccount(newEntity)
             }

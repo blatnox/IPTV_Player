@@ -1,4 +1,4 @@
-﻿plugins {
+plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
@@ -11,7 +11,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.blatnox.tvplayer"
+        applicationId = "com.antigravity.tvplayer"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
