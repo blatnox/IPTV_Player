@@ -11,6 +11,7 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -175,15 +176,20 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.spacedBy(32.dp)
             ) {
                 // Left Column: Playback & Stream Settings
-                LazyColumn(
+                Column(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .fillMaxSize()
                 ) {
-                    item {
-                        SettingsSectionTitle(title = "Stream & Playback")
-                    }
+                    SettingsSectionTitle(title = "Stream & Playback")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(bottom = 20.dp)
+                    ) {
 
                     item {
                         SettingsCard(title = "Preferred Stream Format") {
@@ -291,17 +297,23 @@ fun SettingsScreen(
                         }
                     }
                 }
+            }
 
-                // Right Column: Active Account & Profile Switcher
-                LazyColumn(
+            // Right Column: Active Account & Profile Switcher
+                Column(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .fillMaxSize()
                 ) {
-                    item {
-                        SettingsSectionTitle(title = "Active Account")
-                    }
+                    SettingsSectionTitle(title = "Active Account")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(bottom = 20.dp)
+                    ) {
 
                     if (activeAccount != null) {
                         item {
@@ -365,6 +377,7 @@ fun SettingsScreen(
                 }
             }
         }
+    }
 
         if (showAddMirrorDialog) {
             AddMirrorDialog(
@@ -622,52 +635,71 @@ fun AccountManagementRow(
     onSelect: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Card(
-        onClick = onSelect,
-        colors = CardDefaults.colors(
-            containerColor = if (isActive) SurfaceVariantDark else SurfaceDark,
-            focusedContainerColor = FocusCyan
-        ),
-        shape = CardDefaults.shape(RoundedCornerShape(8.dp)),
-        modifier = Modifier.fillMaxWidth()
+    val rowInteraction = remember { MutableInteractionSource() }
+    val isRowFocused by rowInteraction.collectIsFocusedAsState()
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (isRowFocused) Color(0xFF1F2B3E) else if (isActive) SurfaceVariantDark else SurfaceDark)
+            .border(
+                width = if (isRowFocused) 2.dp else 1.dp,
+                color = if (isRowFocused) FocusCyan else if (isActive) FocusCyan.copy(alpha = 0.5f) else CardBorderSubtle,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .clickable(
+                interactionSource = rowInteraction,
+                indication = null,
+                onClick = onSelect
+            )
+            .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
                 Text(
                     text = account.username + if (isActive) " (Active)" else "",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = if (isRowFocused) Color.White else TextPrimary
                     )
                 )
                 Text(
                     text = account.serverUrl,
-                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary),
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = if (isRowFocused) TextPrimary else TextSecondary
+                    ),
                     maxLines = 1
                 )
             }
+
+            Spacer(modifier = Modifier.width(12.dp))
 
             Surface(
                 onClick = onDelete,
                 shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
                 colors = ClickableSurfaceDefaults.colors(
-                    containerColor = Color.Transparent,
+                    containerColor = if (isRowFocused) SurfaceDark.copy(alpha = 0.6f) else Color.Transparent,
                     focusedContainerColor = ErrorRed
                 ),
                 modifier = Modifier.size(32.dp)
             ) {
-                Box(contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = TextMuted,
-                        modifier = Modifier.size(18.dp)
+                        contentDescription = "Delete account",
+                        tint = if (isRowFocused) Color.White else TextMuted,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
