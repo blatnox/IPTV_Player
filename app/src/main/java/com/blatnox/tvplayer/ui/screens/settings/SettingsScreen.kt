@@ -213,182 +213,81 @@ fun SettingsScreen(
                     }
 
                     item {
-                        SettingsCard(title = "Startup Behavior") {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Resume Last Watched Channel",
-                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                            color = TextPrimary,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    )
-                                    Text(
-                                        text = "Automatically plays the last channel upon opening the app.",
-                                        style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
-                                    )
-                                }
-                                Button(
-                                    onClick = { viewModel.setResumeLastChannel(!resumeLastChannel) },
-                                    colors = ButtonDefaults.colors(
-                                        containerColor = if (resumeLastChannel) FocusCyan else SurfaceVariantDark,
-                                        focusedContainerColor = Color.White
-                                    ),
-                                    modifier = Modifier.clickable { viewModel.setResumeLastChannel(!resumeLastChannel) }
-                                ) {
-                                    Text(
-                                        text = if (resumeLastChannel) "Enabled" else "Disabled",
-                                        color = if (resumeLastChannel) Color.Black else TextPrimary,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
+                        ActionSettingCard(
+                            title = "Startup Behavior",
+                            subtitle = "Resume Last Watched Channel",
+                            description = "Automatically plays the last channel upon opening the app.",
+                            actionText = if (resumeLastChannel) "Enabled" else "Disabled",
+                            isActive = resumeLastChannel,
+                            onClick = { viewModel.setResumeLastChannel(!resumeLastChannel) }
+                        )
                     }
 
                     item {
-                        SettingsCard(title = "Categories") {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Manage Categories",
-                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                            color = TextPrimary,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    )
-                                    Text(
-                                        text = "Select or hide categories to simplify your Live TV guide.",
-                                        style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
-                                    )
-                                }
-
-                                val manageInteraction = remember { MutableInteractionSource() }
-                                val isManageFocused by manageInteraction.collectIsFocusedAsState()
-                                val isManageHovered by manageInteraction.collectIsHoveredAsState()
-
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(
-                                            when {
-                                                isManageFocused -> FocusCyan
-                                                isManageHovered -> SurfaceVariantDark
-                                                else -> SurfaceVariantDark.copy(alpha = 0.7f)
-                                            }
-                                        )
-                                        .border(
-                                            1.dp,
-                                            if (isManageFocused) FocusCyan else Color(0xFF232D3F),
-                                            RoundedCornerShape(8.dp)
-                                        )
-                                        .clickable(
-                                            interactionSource = manageInteraction,
-                                            indication = null,
-                                            onClick = onManageCategories
-                                        )
-                                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = Icons.Default.Visibility,
-                                            contentDescription = null,
-                                            tint = if (isManageFocused) Color.Black else FocusCyan,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = "Manage",
-                                            style = MaterialTheme.typography.labelMedium.copy(
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (isManageFocused) Color.Black else TextPrimary
-                                            )
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        ActionSettingCard(
+                            title = "Categories",
+                            subtitle = "Manage Categories",
+                            description = "Select or hide categories to simplify your Live TV guide.",
+                            actionText = "Manage",
+                            actionIcon = Icons.Default.Visibility,
+                            isActive = false,
+                            onClick = onManageCategories
+                        )
                     }
 
                     item {
-                        SettingsCard(title = "Network & Playlist") {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Reload Channels & Categories",
-                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                            color = TextPrimary,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    )
-                                    Text(
-                                        text = "Syncs latest streams from the Xtream server. Favorites are preserved.",
-                                        style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
-                                    )
-                                }
+                        ActionSettingCard(
+                            title = "Network & Playlist",
+                            subtitle = "Reload Channels & Categories",
+                            description = "Syncs latest streams from the Xtream server. Favorites are preserved.",
+                            actionText = if (isRefreshing) "Refreshing…" else "Refresh",
+                            actionIcon = if (isRefreshing) null else Icons.Default.Refresh,
+                            isLoading = isRefreshing,
+                            statusMessage = refreshStatus,
+                            isActive = false,
+                            onClick = { if (!isRefreshing) viewModel.refreshPlaylist() }
+                        )
+                    }
 
-                                Button(
-                                    onClick = viewModel::refreshPlaylist,
-                                    enabled = !isRefreshing,
-                                    colors = ButtonDefaults.colors(
-                                        containerColor = FocusCyan,
-                                        focusedContainerColor = Color.White
-                                    ),
-                                    modifier = Modifier.clickable { if (!isRefreshing) viewModel.refreshPlaylist() }
-                                ) {
-                                    if (isRefreshing) {
-                                        CircularProgressIndicator(
-                                            color = Color.Black,
-                                            strokeWidth = 2.dp,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    } else {
-                                        Text(
-                                            text = "Refresh",
-                                            color = Color.Black,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
+                    item {
+                        val uaInteraction = remember { MutableInteractionSource() }
+                        val isUaFocused by uaInteraction.collectIsFocusedAsState()
 
-                            if (refreshStatus != null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isUaFocused) Color(0xFF1F2B3E) else SurfaceDark)
+                                .border(
+                                    width = if (isUaFocused) 2.dp else 1.dp,
+                                    color = if (isUaFocused) FocusCyan else Color.Transparent,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .focusable(interactionSource = uaInteraction)
+                                .padding(18.dp)
+                        ) {
+                            Column {
                                 Text(
-                                    text = refreshStatus ?: "",
-                                    style = MaterialTheme.typography.bodySmall.copy(color = FocusCyan),
-                                    modifier = Modifier.padding(top = 8.dp)
+                                    text = "HTTP User-Agent",
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary
+                                    ),
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                Text(
+                                    text = userAgent,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = if (isUaFocused) Color.White else TextSecondary,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                )
+                                Text(
+                                    text = "Standard User-Agent ensures maximum compatibility with Xtream proxy streams.",
+                                    style = MaterialTheme.typography.bodySmall.copy(color = TextMuted),
+                                    modifier = Modifier.padding(top = 4.dp)
                                 )
                             }
-                        }
-                    }
-
-                    item {
-                        SettingsCard(title = "HTTP User-Agent") {
-                            Text(
-                                text = userAgent,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = TextSecondary,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            )
-                            Text(
-                                text = "Standard User-Agent ensures maximum compatibility with Xtream proxy streams.",
-                                style = MaterialTheme.typography.bodySmall.copy(color = TextMuted),
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
                         }
                     }
                 }
@@ -518,6 +417,130 @@ fun SettingsCard(
 }
 
 @Composable
+fun ActionSettingCard(
+    title: String,
+    subtitle: String,
+    description: String,
+    actionText: String,
+    actionIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    isLoading: Boolean = false,
+    statusMessage: String? = null,
+    isActive: Boolean = false,
+    onClick: () -> Unit
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val isFocused by interaction.collectIsFocusedAsState()
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isFocused) Color(0xFF1F2B3E) else SurfaceDark)
+            .border(
+                width = if (isFocused) 2.dp else 1.dp,
+                color = if (isFocused) FocusCyan else Color.Transparent,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick
+            )
+            .padding(18.dp)
+    ) {
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                ),
+                modifier = Modifier.padding(bottom = 10.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = if (isFocused) Color.White else TextPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            when {
+                                isFocused -> FocusCyan
+                                isActive -> FocusCyan.copy(alpha = 0.2f)
+                                else -> SurfaceVariantDark
+                            }
+                        )
+                        .border(
+                            1.dp,
+                            if (isFocused) FocusCyan else Color(0xFF232D3F),
+                            RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                color = if (isFocused) Color.Black else FocusCyan,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        } else if (actionIcon != null) {
+                            Icon(
+                                imageVector = actionIcon,
+                                contentDescription = null,
+                                tint = if (isFocused) Color.Black else FocusCyan,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Text(
+                            text = actionText,
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = when {
+                                    isFocused -> Color.Black
+                                    isActive -> FocusCyan
+                                    else -> TextPrimary
+                                }
+                            )
+                        )
+                    }
+                }
+            }
+
+            if (!statusMessage.isNullOrBlank()) {
+                Text(
+                    text = statusMessage,
+                    style = MaterialTheme.typography.bodySmall.copy(color = FocusCyan),
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun StreamFormatButton(
     label: String,
     isSelected: Boolean,
@@ -531,7 +554,7 @@ fun StreamFormatButton(
             focusedContainerColor = Color.White
         ),
         shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
-        modifier = modifier.clickable { onClick() }
+        modifier = modifier
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -874,30 +897,32 @@ fun MirrorItemRow(
     val rowInteraction = remember { MutableInteractionSource() }
     val isRowFocused by rowInteraction.collectIsFocusedAsState()
 
-    Card(
-        onClick = onPromote,
-        colors = CardDefaults.colors(
-            containerColor = Color(0xFF161E2C),
-            focusedContainerColor = Color(0xFF1F2B3E)
-        ),
-        shape = CardDefaults.shape(RoundedCornerShape(8.dp)),
+    Box(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (isRowFocused) Color(0xFF1F2B3E) else Color(0xFF161E2C))
             .border(
                 width = if (isRowFocused) 2.dp else 1.dp,
                 color = if (isRowFocused) FocusCyan else CardBorderSubtle,
                 shape = RoundedCornerShape(8.dp)
-            ),
-        interactionSource = rowInteraction
+            )
+            .clickable(
+                interactionSource = rowInteraction,
+                indication = null,
+                onClick = onPromote
+            )
+            .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
                 Text(
                     text = mirrorUrl,
                     style = MaterialTheme.typography.bodySmall.copy(
@@ -912,7 +937,7 @@ fun MirrorItemRow(
                 }
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -922,7 +947,8 @@ fun MirrorItemRow(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(if (isRowFocused) FocusCyan else SurfaceDark)
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "Make Primary",
@@ -937,12 +963,15 @@ fun MirrorItemRow(
                     onClick = onRemove,
                     shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(6.dp)),
                     colors = ClickableSurfaceDefaults.colors(
-                        containerColor = Color.Transparent,
+                        containerColor = if (isRowFocused) SurfaceDark.copy(alpha = 0.6f) else Color.Transparent,
                         focusedContainerColor = ErrorRed
                     ),
-                    modifier = Modifier.size(30.dp)
+                    modifier = Modifier.size(32.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete mirror",
